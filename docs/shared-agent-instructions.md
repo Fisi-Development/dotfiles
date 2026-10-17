@@ -1,6 +1,14 @@
 # Maintain shared agent instructions
 
-Edit `~/AGENTS.md` for shared working preferences. Codex and OpenCode use symlinks to that file, and Claude imports it through the Codex entry point.
+Edit `~/AGENTS.md` for shared working preferences. Codex and OpenCode use symlinks to that file, and `~/.claude/CLAUDE.md` imports it with `@~/AGENTS.md`.
+
+## Why Claude imports `~/AGENTS.md` by its real path
+
+Claude Code (checked on 2.1.302) has an `instructionFiles` setting whose default, `claude-md-or-agents-md`, loads AGENTS.md files as project instructions when no CLAUDE.md exists in the cwd's ancestors. Almost every session runs under the home folder, so in a repo without its own CLAUDE.md (Harbor, scratch folders) it picks up `~/AGENTS.md` too. It skips a file whose path is already loaded, but compares paths without resolving symlinks, and it compares content only against project files, not the user CLAUDE.md's imports.
+
+The import used to be `@~/.codex/AGENTS.md`, a symlink to the same file, so those sessions loaded the agreement twice (about 4.8k tokens extra). Importing `@~/AGENTS.md` makes the paths match and the walk-up copy is dropped. Keep the import rather than relying on the walk-up load: sessions outside the home folder (`C:\ProgramData\...`, `C:\hfi-green`) and repos with their own CLAUDE.md get the agreement only through it.
+
+To check, run a one-shot session from a folder under home with no CLAUDE.md and ask it to list its `Contents of` headers; `~/AGENTS.md` should appear once.
 
 ## Source layout
 
@@ -11,7 +19,7 @@ Edit `~/AGENTS.md` for shared working preferences. Codex and OpenCode use symlin
 | `home/encrypted_AGENTS.md.age` | `~/AGENTS.md` | Shared working agreement |
 | `home/dot_codex/symlink_AGENTS.md.tmpl` | `~/.codex/AGENTS.md` | Link to the shared agreement |
 | `home/dot_config/opencode/symlink_AGENTS.md.tmpl` | `~/.config/opencode/AGENTS.md` | Link to the shared agreement |
-| `home/dot_claude/encrypted_CLAUDE.md.age` | `~/.claude/CLAUDE.md` | Shared import and Claude-specific notes |
+| `home/private_dot_claude/encrypted_CLAUDE.md.age` | `~/.claude/CLAUDE.md` | Shared import and Claude-specific notes |
 
 The symlink templates use `.chezmoi.homeDir`, so they resolve against each machine's home directory. Changes to the live agreement reach both symlinks immediately, but chezmoi stores a snapshot until the next `add`.
 
