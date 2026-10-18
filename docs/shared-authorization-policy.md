@@ -33,12 +33,26 @@ The installer writes `t3_runtime_modes` from the agent-guard current check into
 file exists. Only harnesses agent-guard hooks follow the check (Claude today);
 it leaves the Codex and OpenCode entries as they are. It prints only that map
 from the config and keeps no backup copy of that file, which holds the hub
-token. `--guard-bin` and `--skills` are refused for the real home. An astropath from
+token. `--guard-bin` and `--updater-state` are refused for the real home. An astropath from
 Telepathica agent-mailbox#146 on re-reads the map each scan; an older one
-needs a restart. The guard counts as current only when `gh api` lists the
-`agent-guard-v*` release tags of `royalaid/skills` (never the checkout's own
-remote, which anything writing the checkout can repoint); without that answer
-the mode is auto.
+needs a restart.
+
+Since 0.5.0 agent-guard ships only as successful `main` push builds of
+`.github/workflows/agent-guard.yml` in Fisi-Development/harbor, which the root
+updater installs (Harbor `skills/agent-guard/references/rollout.md`,
+"Automatic rollout"); the `agent-guard-v*` tags stop at 0.4.4. So the newest
+version comes from the updater's own record, `agent-guard-updater/state.json`
+beside the guard (`C:\Program Files\ClaudeCode` or
+`/Library/Application Support/ClaudeCode`). Each updater run, every 15
+minutes, writes there as `release_considered` the version of the newest run it
+accepts (actor `royalaid`, conclusion success, head on `main`, version from
+`Cargo.toml` at that commit), before it decides whether to install it. Only
+SYSTEM or root can write that file, so a user process cannot fake it, and it
+needs no GitHub login of its own. The guard counts as current when the live
+binary's `--version` is at least that version. A missing or unreadable record,
+one older than two hours or dated in the future, a run that never reached a
+candidate (for example `http_failed`), or on macOS a record or folder not owned
+by root or writable by others, gives no answer, and the mode is auto.
 
 Two chezmoi-managed rule layers sit beside the adapters for Telepathica's
 commands that carry no message body (`find`, `inbox`, `thread`, `whoami`,

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate additive adapters from the canonical policy; preview by default."""
-import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, tempfile, tomllib
+import argparse, datetime, hashlib, json, os, pathlib, re, shutil, stat, subprocess, tempfile, tomllib
 
 START = '<!-- shared-authorization-policy:start -->'
 END = '<!-- shared-authorization-policy:end -->'
@@ -18,14 +18,44 @@ GUARD_PATHS = (
 # coverage"), so only Claude follows the guard check. Codex and OpenCode keep the
 # mode their host config already sets: full access there has no per-action gate.
 GUARDED_HARNESSES = ('claude',)
-RELEASE_REPO = 'royalaid/skills'  # agent-guard releases (skills/agent-guard/references/rollout.md)
+# agent-guard ships as successful main push builds of .github/workflows/agent-guard.yml in
+# Fisi-Development/harbor, which the root updater beside each guard installs (skills/agent-guard/
+# references/rollout.md, "Automatic rollout"). Each updater run records in state.json the version
+# of the newest build it accepts as release_considered; SYSTEM or root writes it, and users read it.
+STATE_MAX_AGE = 2*3600  # The updater runs every 15 minutes; an older record is not an answer.
 
 def read_exact(path):
     with path.open(encoding='utf-8',newline='') as f:
         return f.read()
 
-def agent_guard_status(skills, guard_bin=None, fixture=False):
-    installed=latest=None
+def updater_state_path(binary):
+    return binary.parent.parent/'agent-guard-updater'/'state.json'
+
+def protected(path):
+    """Only root may write the record or replace it. On Windows, Program Files already
+    keeps it from users, and the updater refuses to run when its directory is not protected."""
+    if os.name=='nt': return True
+    for item in (path,path.parent):
+        info=item.lstat()
+        if stat.S_ISLNK(info.st_mode) or info.st_uid!=0 or info.st_mode&0o022: return False
+    return True
+
+def updater_latest(path, fixture=False, now=None):
+    """The version the updater last accepted and when it ran, or (None, None) when the record
+    is missing, unreadable, stale, from the future, or writable by someone other than root."""
+    try:
+        if not fixture and not protected(path): return None,None
+        state=json.loads(path.read_text(encoding='utf-8'))
+        ran=datetime.datetime.fromisoformat(state['last_run'])
+        age=((now or datetime.datetime.now(datetime.timezone.utc))-ran).total_seconds()
+        match=re.fullmatch(r'(\d+)\.(\d+)\.(\d+)',state['release_considered'])
+        if match and -300<=age<=STATE_MAX_AGE: return tuple(map(int,match.groups())),state['last_run']
+    except (OSError,ValueError,KeyError,TypeError,AttributeError):
+        pass
+    return None,None
+
+def agent_guard_status(guard_bin=None, state_path=None, fixture=False, now=None):
+    installed=None
     binary=guard_bin if guard_bin is not None else next((p for p in GUARD_PATHS if p.exists()),None)
     if binary is not None:
         try:
@@ -34,29 +64,14 @@ def agent_guard_status(skills, guard_bin=None, fixture=False):
             if match: installed=tuple(map(int,match.groups()))
         except (OSError,subprocess.SubprocessError,UnicodeError):
             pass
-    # Local tags can be deleted, and the checkout's remote and git config can be
-    # rewritten, by anything that writes the checkout. So the release list comes
-    # from the release repository through gh's own login; local tags can only add
-    # versions, which makes the check stricter. Without that answer the guard does
-    # not count as current. A fixture home reads its fixture checkout's origin.
-    tag=r'(?:refs/tags/)?agent-guard-v(\d+)\.(\d+)\.(\d+)'
-    released=(['git','-C',str(skills),'ls-remote','--tags','origin','agent-guard-v*'] if fixture else
-              ['gh','api','repos/'+RELEASE_REPO+'/git/matching-refs/tags/agent-guard-v','--jq','.[].ref'])
-    versions,remote=[],False
-    for command in (['git','-C',str(skills),'tag','-l','agent-guard-v*'],released):
-        try:
-            result=subprocess.run(command,capture_output=True,text=True,timeout=20,check=True)
-        except (OSError,subprocess.SubprocessError,UnicodeError):
-            continue
-        found=[tuple(map(int,m.groups())) for line in result.stdout.splitlines()
-               if (m:=re.fullmatch(tag,line.split('\t')[-1]))]
-        remote=remote or (command is released and bool(found))
-        versions+=found
-    if versions: latest=max(versions)
+    # Read the record of the updater that installs this binary. Without a fresh record the
+    # newest build is unknown, so the guard does not count as current.
+    if state_path is None and binary is not None: state_path=updater_state_path(pathlib.Path(binary))
+    latest,checked=updater_latest(state_path,fixture,now) if state_path is not None else (None,None)
     return {'installed':'.'.join(map(str,installed)) if installed is not None else None,
             'latest':'.'.join(map(str,latest)) if latest is not None else None,
-            'origin_checked':remote,
-            'current':remote and installed is not None and latest is not None and installed>=latest}
+            'updater_checked_at':checked,
+            'current':installed is not None and latest is not None and installed>=latest}
 
 def remove_block(text, start, end):
     if start not in text and end not in text: return text
@@ -130,10 +145,10 @@ def atomic_write(path,text,expected):
 
 def main():
     p=argparse.ArgumentParser(); p.add_argument('--home',type=pathlib.Path,default=pathlib.Path.home()); p.add_argument('--apply',action='store_true')
-    p.add_argument('--guard-bin',type=pathlib.Path); p.add_argument('--skills',type=pathlib.Path); args=p.parse_args()
+    p.add_argument('--guard-bin',type=pathlib.Path); p.add_argument('--updater-state',type=pathlib.Path); args=p.parse_args()
     # The overrides exist for fixture homes; on the real home they could fake a current guard.
-    if (args.guard_bin or args.skills) and args.home.resolve()==pathlib.Path.home().resolve():
-        p.error('--guard-bin and --skills are only for a fixture --home')
+    if (args.guard_bin or args.updater_state) and args.home.resolve()==pathlib.Path.home().resolve():
+        p.error('--guard-bin and --updater-state are only for a fixture --home')
     home=args.home.resolve(); policy=home/'.agents/authorization-policy.md'; content=policy.read_text(encoding='utf-8'); digest=hashlib.sha256(content.encode()).hexdigest()
     # Instruction files are chezmoi snapshots shared by every host, so they name
     # the policy by a home-relative path; an absolute one drifts per host.
@@ -148,8 +163,7 @@ def main():
     def instruction(path,body):
         old=path.read_text(encoding='utf-8') if path.exists() else ''
         put(path,managed(old,START,END,body))
-    guard=agent_guard_status(args.skills if args.skills is not None else home/'git/skills',args.guard_bin,
-                             fixture=home!=pathlib.Path.home().resolve())
+    guard=agent_guard_status(args.guard_bin,args.updater_state,fixture=home!=pathlib.Path.home().resolve())
     mode='full-access' if guard['current'] else 'auto'
     telepathica={'path':None,'before':None,'after':None}
     for path in (home/'.telepathica/config.json',home/'.agent-mailbox/config.json'):
