@@ -1,1 +1,3 @@
 home/dot_zsh/archconfig
+__pycache__/
+*.pyc
