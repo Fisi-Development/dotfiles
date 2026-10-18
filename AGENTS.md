@@ -37,7 +37,7 @@ A change reaches a host only when that host's source checkout has it and chezmoi
 
 1. **Capture.** A change made in a live file goes into the source first: `chezmoi add --encrypt ~/AGENTS.md` or `chezmoi add --encrypt ~/.claude/CLAUDE.md` for the encrypted snapshots, `chezmoi add <path>` for a plain file. From a branch worktree, add `--source <worktree>/home`, since chezmoi otherwise writes into the host's checkout. Check: `chezmoi diff <targets>` prints nothing on the editing host.
 2. **Merge.** Commit without attribution trailers. Merge the PR with `gh pr merge <PR> -R royalaid/dotfiles --squash --delete-branch`, or push `master` directly. Check: `git -C <source checkout> status -sb` shows `## master...origin/master` with nothing ahead, and `git log -1 origin/master` is the change.
-3. **Apply on the Mac.** Apply only `<targets>`: a broad `chezmoi apply` also rewrites unrelated files that drift on purpose (`chezmoi status` lists them).
+3. **Apply on the Mac.** Hand this step to `claude@harbor@bouncehouse` over Telepathica with instructions to work in `~/.local/share/chezmoi`. Apply only `<targets>`: a broad `chezmoi apply` also rewrites unrelated files that drift on purpose (`chezmoi status` lists them).
    ```sh
    git -C ~/.local/share/chezmoi pull --ff-only
    chezmoi diff <targets>

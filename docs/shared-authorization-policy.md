@@ -23,8 +23,8 @@ The installer embeds the same Markdown in Codex's additive
 `auto_review.extra_policy` after a fixed authorization preamble, and Claude's
 top-level `autoMode.environment` with `$defaults`. Claude's `allow` entry is
 extracted from the authorized-review, "Royal's GitHub repositories",
-"Telepathica commands" and "Launch modes" sections, since `allow` entries are
-the classifier's exceptions to its soft blocks (External System Writes,
+"Telepathica commands", "Chezmoi rollout" and "Launch modes" sections, since
+`allow` entries are the classifier's exceptions to its soft blocks (External System Writes,
 Create Public Surface, Production Deploy).
 Shared agent entry points reference the canonical file.
 

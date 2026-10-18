@@ -1,6 +1,6 @@
 # Royal's shared authorization policy
 
-Policy revision: 2026-10-17. Apply alongside harness safety policy and the current
+Policy revision: 2026-10-18. Apply alongside harness safety policy and the current
 project's action gates. Evaluate the requested action, payload, destination,
 executor, account, and project separately. Credentials or a configured provider
 alone grant no permission. Task authorization does not change runtime access.
@@ -86,6 +86,18 @@ Limits. This does not cover a force push to a default branch, deleting,
 transferring or renaming a repository, changing its visibility, settings or
 branch protection, or Fisi-Development repositories that did not come from
 royalaid. Company repositories keep their own gates.
+
+## Chezmoi rollout
+
+When the task asks for a rollout, `chezmoi apply` and `chezmoi verify` of
+committed dotfiles, and writes of chezmoi-managed rule files (for example
+`~/.codex/rules`, `~/.codex-work/rules` and `~/.claude/rules`), are the
+intended own-tools rollout and are not Self-Modification. Follow the repository's AGENTS.md
+Rollout and carry the originating rollout request into any trusted handoff.
+
+Limits. This grant does not cover edits to agent-guard, classifier, hook or
+permission settings outside that rollout. Unasked widening of permissions
+stays denied. Existing hard deny and ask controls and project gates still apply.
 
 ## Launch modes
 
