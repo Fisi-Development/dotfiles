@@ -1,0 +1,7 @@
+if [ -d "$HOME/.cargo/bin" ]; then
+    case ":$PATH:" in
+        *":$HOME/.cargo/bin:"*) ;;
+        *) PATH="$HOME/.cargo/bin${PATH:+:$PATH}" ;;
+    esac
+fi
+export PATH

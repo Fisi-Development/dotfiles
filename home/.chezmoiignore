@@ -24,6 +24,7 @@
 # same as disposable, so keep the live file rather than overwrite it.
 .zshrc
 .zprofile
+.zshenv
 {{ end }}
 
 {{ if eq .chezmoi.os "darwin" }}

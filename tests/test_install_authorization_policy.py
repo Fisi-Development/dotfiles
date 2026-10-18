@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -31,8 +32,9 @@ class InstallerTests(unittest.TestCase):
             self.git('tag', 'agent-guard-v' + version, self.git('hash-object', '-w', '--stdin', input='fixture').strip())
         # The checkout is its own origin unless a test points origin elsewhere.
         self.git('remote', 'add', 'origin', str(self.skills))
-        self.guard = self.home / 'fake-guard'
-        self.guard.write_text('#!' + sys.executable + '\nprint("agent-guard 0.4.1")\n')
+        self.guard = self.home / ('fake-guard.cmd' if os.name == 'nt' else 'fake-guard')
+        self.guard.write_text('@echo agent-guard 0.4.1\n' if os.name == 'nt' else
+                              '#!' + sys.executable + '\nprint("agent-guard 0.4.1")\n')
         self.guard.chmod(0o700)
 
     def write(self, name, text):
@@ -101,7 +103,8 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(result.stdout, '')
 
     def test_version_must_be_the_whole_output(self):
-        self.guard.write_text('#!/bin/sh\necho "not agent-guard 9.9.9 really"\n')
+        self.guard.write_text('@echo not agent-guard 9.9.9 really\n' if os.name == 'nt' else
+                              '#!/bin/sh\necho "not agent-guard 9.9.9 really"\n')
         self.assertIsNone(self.run_installer()['agent_guard']['installed'])
 
     def test_deleted_local_tag_is_restored_from_origin(self):
@@ -180,6 +183,29 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual(data['model'], 'fixture')
         self.assertEqual(self.run_installer()['changed_paths'], [])
 
+    def test_requested_chezmoi_rollout_reaches_all_adapters_with_limits(self):
+        self.write('.claude/settings.json', '{}')
+        for name in ('.codex', '.codex-work'):
+            self.write(name + '/config.toml', 'model = "fixture"\n')
+        preview = self.run_installer()
+        self.assertEqual((self.home / '.claude/settings.json').read_text(), '{}')
+        self.assertTrue(preview['changed_paths'])
+        self.run_installer('--apply')
+        auto = json.loads((self.home / '.claude/settings.json').read_bytes())['autoMode']
+        policies = [auto['allow'][-1], auto['environment'][-1]]
+        for name in ('.codex', '.codex-work'):
+            policies.append(tomllib.loads((self.home / name / 'config.toml').read_text())
+                            ['auto_review']['extra_policy'])
+        for policy in policies:
+            with self.subTest(adapter=policies.index(policy)):
+                self.assertIn('When the task asks for a rollout, `chezmoi apply` and `chezmoi verify`', policy)
+                self.assertIn('`~/.codex/rules`, `~/.codex-work/rules` and `~/.claude/rules`', policy)
+                self.assertIn('rollout and are not Self-Modification.', policy)
+                self.assertIn('permission settings outside that rollout.', policy)
+                self.assertIn('Unasked widening of permissions\nstays denied.', policy)
+        self.assertIn('Policy revision: 2026-10-18.', auto['environment'][-1])
+        self.assertEqual(self.run_installer()['changed_paths'], [])
+
 
 class GuardStatusTests(unittest.TestCase):
     def result(self, stdout):
@@ -189,7 +215,7 @@ class GuardStatusTests(unittest.TestCase):
         with mock.patch.object(installer.subprocess, 'run', side_effect=[self.result('agent-guard 0.10.0'), self.result('agent-guard-v0.9.9\nagent-guard-v0.10.0\nagent-guard-v99.0.0-rc1'), self.result('abc\trefs/tags/agent-guard-v0.10.0\nabc\trefs/tags/agent-guard-v0.10.0^{}')]) as run:
             self.assertEqual(installer.agent_guard_status(pathlib.Path('/fixture'), pathlib.Path('/guard')),
                              {'installed': '0.10.0', 'latest': '0.10.0', 'origin_checked': True, 'current': True})
-            self.assertEqual(run.call_args_list[0].args[0], ['/guard', '--version'])
+            self.assertEqual(run.call_args_list[0].args[0], [str(pathlib.Path('/guard')), '--version'])
             self.assertEqual(run.call_args_list[0].kwargs['timeout'], 10)
             self.assertNotIn('shell', run.call_args_list[0].kwargs)
             # The release list comes from the release repository, not the checkout's own remote.

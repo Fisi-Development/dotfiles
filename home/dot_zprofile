@@ -21,6 +21,10 @@ eval "$(/opt/homebrew/bin/brew shellenv zsh)"
 # This won't be added again if you remove it.
 source ~/.orbstack/shell/init.zsh 2>/dev/null || :
 
+if [ -r "$HOME/.zshenv" ]; then
+    . "$HOME/.zshenv"
+fi
+
 # Keep the Homebrew Node toolchain last in each startup sequence.
 if [ -r "$HOME/.config/node-toolchain/node-toolchain.sh" ]; then
     . "$HOME/.config/node-toolchain/node-toolchain.sh"
