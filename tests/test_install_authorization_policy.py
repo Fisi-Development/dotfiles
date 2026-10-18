@@ -1,3 +1,4 @@
+import datetime
 import importlib.util
 import json
 import os
@@ -25,13 +26,8 @@ class InstallerTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.home = pathlib.Path(self.tmp.name).resolve()
         self.write('.agents/authorization-policy.md', POLICY)
-        self.skills = self.home / 'git/skills'
-        self.skills.mkdir(parents=True)
-        self.git('init', '-q')
-        for version in ('0.4.0', '0.4.1'):
-            self.git('tag', 'agent-guard-v' + version, self.git('hash-object', '-w', '--stdin', input='fixture').strip())
-        # The checkout is its own origin unless a test points origin elsewhere.
-        self.git('remote', 'add', 'origin', str(self.skills))
+        self.state = self.home / 'agent-guard-updater/state.json'
+        self.updater('0.4.1')
         self.guard = self.home / ('fake-guard.cmd' if os.name == 'nt' else 'fake-guard')
         self.guard.write_text('@echo agent-guard 0.4.1\n' if os.name == 'nt' else
                               '#!' + sys.executable + '\nprint("agent-guard 0.4.1")\n')
@@ -43,13 +39,17 @@ class InstallerTests(unittest.TestCase):
         path.write_bytes(text.encode())
         return path
 
-    def git(self, *args, **kwargs):
-        return subprocess.run(['git', '-C', str(self.skills), *args], check=True,
-                              capture_output=True, text=True, **kwargs).stdout
+    def updater(self, considered, age=datetime.timedelta(minutes=5), **extra):
+        ran = (datetime.datetime.now(datetime.timezone.utc) - age).isoformat()
+        # The shape root_update.py writes after a run that found nothing newer to install.
+        record = {'installed_version': '0.4.1', 'last_run': ran, 'reason': 'not_newer',
+                  'release_considered': considered, 'result': 'current', **extra}
+        self.write('agent-guard-updater/state.json', json.dumps(record))
+        return record['last_run']
 
     def run_installer(self, *args):
         result = subprocess.run([sys.executable, str(SCRIPT), '--home', str(self.home),
-                                 '--guard-bin', str(self.guard), *args],
+                                 '--guard-bin', str(self.guard), '--updater-state', str(self.state), *args],
                                 check=True, capture_output=True, text=True)
         self.assertNotIn('SECRET', result.stdout)
         self.assertEqual(result.stderr, '')
@@ -66,9 +66,10 @@ class InstallerTests(unittest.TestCase):
     def test_current_preserves_config_and_preview_is_read_only(self):
         path = self.config()
         old = path.read_bytes()
+        ran = self.updater('0.4.1')
         preview = self.run_installer()
         self.assertEqual(path.read_bytes(), old)
-        self.assertEqual(preview['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.1', 'origin_checked': True, 'current': True})
+        self.assertEqual(preview['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.1', 'updater_checked_at': ran, 'current': True})
         self.assertEqual(preview['telepathica']['before'], {'grok': 'auto', 'codex': 'full-access'})
         self.assertEqual(preview['launch_mode'], 'full-access')
         self.run_installer('--apply')
@@ -87,9 +88,10 @@ class InstallerTests(unittest.TestCase):
     def test_newer_release_downgrades_modes(self):
         path = self.config()
         self.run_installer('--apply')
-        self.git('tag', 'agent-guard-v0.4.2', self.git('rev-parse', 'agent-guard-v0.4.1').strip())
+        # A newer main build the updater accepted but has not installed.
+        ran = self.updater('0.4.2', result='failed', reason='artifact_expired')
         summary = self.run_installer('--apply')
-        self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.2', 'origin_checked': True, 'current': False})
+        self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.2', 'updater_checked_at': ran, 'current': False})
         self.assertEqual(summary['launch_mode'], 'auto')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes'],
                          {'grok': 'auto', 'codex': 'full-access', 'claude': 'auto'})
@@ -97,7 +99,7 @@ class InstallerTests(unittest.TestCase):
 
     def test_overrides_refused_for_real_home(self):
         result = subprocess.run([sys.executable, str(SCRIPT), '--home', str(pathlib.Path.home()),
-                                 '--guard-bin', str(self.guard)], capture_output=True, text=True)
+                                 '--updater-state', str(self.state)], capture_output=True, text=True)
         self.assertEqual(result.returncode, 2)
         self.assertIn('fixture --home', result.stderr)
         self.assertEqual(result.stdout, '')
@@ -107,26 +109,32 @@ class InstallerTests(unittest.TestCase):
                               '#!/bin/sh\necho "not agent-guard 9.9.9 really"\n')
         self.assertIsNone(self.run_installer()['agent_guard']['installed'])
 
-    def test_deleted_local_tag_is_restored_from_origin(self):
-        origin = self.home / 'origin'
-        subprocess.run(['git', 'clone', '-q', str(self.skills), str(origin)], check=True, capture_output=True)
-        blob = subprocess.run(['git', '-C', str(origin), 'hash-object', '-w', '--stdin'], input='newer',
-                              check=True, capture_output=True, text=True).stdout.strip()
-        subprocess.run(['git', '-C', str(origin), 'tag', 'agent-guard-v0.4.2', blob], check=True)
-        self.git('remote', 'set-url', 'origin', str(origin))
-        status = self.run_installer()['agent_guard']
-        self.assertEqual((status['latest'], status['current']), ('0.4.2', False))
-
-    def test_no_origin_answer_is_not_current(self):
-        self.git('remote', 'remove', 'origin')
-        summary = self.run_installer()
-        self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.1', 'origin_checked': False, 'current': False})
-        self.assertEqual(summary['launch_mode'], 'auto')
+    def test_unusable_updater_record_is_not_current(self):
+        # Runs that never reached a candidate (http_failed resets release_considered),
+        # an updater that stopped running, and records that are not the updater's shape.
+        cases = {'missing': None, 'not json': 'not json', 'list': '[]',
+                 'no candidate': {'considered': None, 'result': 'failed', 'reason': 'http_failed'},
+                 'stale': {'age': datetime.timedelta(hours=3)},
+                 'future': {'age': -datetime.timedelta(hours=1)},
+                 'naive time': {'last_run': '2026-10-18T22:38:14'},
+                 'prerelease': {'considered': '0.5.0-rc1'}}
+        for name, case in cases.items():
+            with self.subTest(case=name):
+                self.state.unlink(missing_ok=True)
+                if isinstance(case, str):
+                    self.write('agent-guard-updater/state.json', case)
+                elif case is not None:
+                    case = dict(case)
+                    self.updater(case.pop('considered', '0.4.1'), case.pop('age', datetime.timedelta(minutes=5)), **case)
+                summary = self.run_installer()
+                self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': None, 'updater_checked_at': None, 'current': False})
+                self.assertEqual(summary['launch_mode'], 'auto')
 
     def test_missing_guard_and_config(self):
         self.guard.unlink()
+        ran = self.updater('0.4.1')
         summary = self.run_installer()
-        self.assertEqual(summary['agent_guard'], {'installed': None, 'latest': '0.4.1', 'origin_checked': True, 'current': False})
+        self.assertEqual(summary['agent_guard'], {'installed': None, 'latest': '0.4.1', 'updater_checked_at': ran, 'current': False})
         self.assertEqual(summary['launch_mode'], 'auto')
         self.assertEqual(summary['telepathica'], {'path': None, 'before': None, 'after': None})
         self.assertFalse(any('config.json' in path for path in summary['changed_paths']))
@@ -208,39 +216,78 @@ class InstallerTests(unittest.TestCase):
 
 
 class GuardStatusTests(unittest.TestCase):
+    NOW = datetime.datetime(2026, 10, 18, 22, 40, tzinfo=datetime.timezone.utc)
+    RAN = '2026-10-18T22:38:14.713025+00:00'
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = pathlib.Path(tmp.name)
+
     def result(self, stdout):
         return subprocess.CompletedProcess([], 0, stdout, '')
 
+    def state(self, considered):
+        # The record a live updater wrote on 18 Oct 2026, with the version varied.
+        path = self.root / 'agent-guard-updater/state.json'
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(json.dumps({'installed_version': considered, 'last_run': self.RAN, 'reason': 'not_newer',
+                                    'release_considered': considered, 'result': 'current'}))
+        return path
+
+    def status(self, version, path, **kwargs):
+        with mock.patch.object(installer.subprocess, 'run', side_effect=[self.result('agent-guard ' + version)]) as run:
+            return installer.agent_guard_status('/guard', path, now=self.NOW, **kwargs), run
+
     def test_numeric_versions_and_installed_ahead(self):
-        with mock.patch.object(installer.subprocess, 'run', side_effect=[self.result('agent-guard 0.10.0'), self.result('agent-guard-v0.9.9\nagent-guard-v0.10.0\nagent-guard-v99.0.0-rc1'), self.result('abc\trefs/tags/agent-guard-v0.10.0\nabc\trefs/tags/agent-guard-v0.10.0^{}')]) as run:
-            self.assertEqual(installer.agent_guard_status(pathlib.Path('/fixture'), pathlib.Path('/guard')),
-                             {'installed': '0.10.0', 'latest': '0.10.0', 'origin_checked': True, 'current': True})
-            self.assertEqual(run.call_args_list[0].args[0], [str(pathlib.Path('/guard')), '--version'])
-            self.assertEqual(run.call_args_list[0].kwargs['timeout'], 10)
-            self.assertNotIn('shell', run.call_args_list[0].kwargs)
-            # The release list comes from the release repository, not the checkout's own remote.
-            self.assertEqual(run.call_args_list[2].args[0][:3], ['gh', 'api', 'repos/royalaid/skills/git/matching-refs/tags/agent-guard-v'])
-        with mock.patch.object(installer.subprocess, 'run', side_effect=[self.result('agent-guard 1.0.0'), self.result('agent-guard-v0.4.1'), self.result('x\trefs/tags/agent-guard-v0.4.1')]):
-            self.assertTrue(installer.agent_guard_status('/fixture', '/guard')['current'])
+        status, run = self.status('0.10.0', self.state('0.10.0'), fixture=True)
+        self.assertEqual(status, {'installed': '0.10.0', 'latest': '0.10.0', 'updater_checked_at': self.RAN, 'current': True})
+        self.assertEqual(run.call_args_list[0].args[0], ['/guard', '--version'])
+        self.assertEqual(run.call_args_list[0].kwargs['timeout'], 10)
+        self.assertNotIn('shell', run.call_args_list[0].kwargs)
+        # Nothing else runs: the updater's record is the only source for the newest build.
+        self.assertEqual(run.call_count, 1)
+        self.assertTrue(self.status('0.10.0', self.state('0.9.12'), fixture=True)[0]['current'])
+        self.assertFalse(self.status('0.9.9', self.state('0.10.0'), fixture=True)[0]['current'])
 
     def test_failures_are_unknown(self):
+        path = self.state('0.4.1')
         for failure in (FileNotFoundError(), subprocess.TimeoutExpired('fixture', 10),
                         subprocess.CalledProcessError(1, 'fixture'), self.result('unparseable')):
-            for index in (0, 1, 2):
-                with self.subTest(failure=failure, index=index):
-                    effects = [self.result('agent-guard 0.4.1'), self.result('agent-guard-v0.4.1'), self.result('x\trefs/tags/agent-guard-v0.4.1')]
-                    effects[index] = failure
-                    with mock.patch.object(installer.subprocess, 'run', side_effect=effects):
-                        status = installer.agent_guard_status('/fixture', '/guard')
-                    if index == 0:
-                        self.assertIsNone(status['installed'])
-                    # Origin alone settles the release list when the local read fails.
-                    self.assertEqual(status['current'], index == 1)
+            with self.subTest(failure=failure):
+                with mock.patch.object(installer.subprocess, 'run', side_effect=[failure]):
+                    status = installer.agent_guard_status('/guard', path, fixture=True, now=self.NOW)
+                self.assertEqual((status['installed'], status['latest'], status['current']), (None, '0.4.1', False))
 
-    def test_first_existing_default_binary(self):
-        with mock.patch.object(pathlib.Path, 'exists', side_effect=[False, True]), mock.patch.object(installer.subprocess, 'run', side_effect=[self.result('agent-guard 0.4.1'), self.result('agent-guard-v0.4.1'), self.result('x\trefs/tags/agent-guard-v0.4.1')]) as run:
-            self.assertTrue(installer.agent_guard_status('/fixture')['current'])
-            self.assertEqual(run.call_args_list[0].args[0][0], str(installer.GUARD_PATHS[1]))
+    def test_record_beside_the_installed_guard(self):
+        # Each default binary pairs with the updater that installs it, under the same protected root.
+        self.assertEqual(installer.updater_state_path(installer.GUARD_PATHS[0]),
+                         pathlib.Path('/Library/Application Support/ClaudeCode/agent-guard-updater/state.json'))
+        self.assertEqual(installer.updater_state_path(installer.GUARD_PATHS[1]),
+                         pathlib.Path(r'C:\Program Files\ClaudeCode\agent-guard-updater\state.json'))
+        binary = self.root / 'agent-guard' / 'agent-guard.exe'
+        binary.parent.mkdir()
+        binary.touch()
+        self.state('0.4.1')
+        with mock.patch.object(installer, 'GUARD_PATHS', (self.root / 'absent', binary)), \
+                mock.patch.object(installer, 'protected', return_value=True) as protected, \
+                mock.patch.object(installer.subprocess, 'run', side_effect=[self.result('agent-guard 0.4.1')]) as run:
+            status = installer.agent_guard_status(now=self.NOW)
+        self.assertEqual(run.call_args_list[0].args[0][0], str(binary))
+        self.assertEqual(protected.call_args.args[0], self.root / 'agent-guard-updater/state.json')
+        self.assertEqual((status['latest'], status['current']), ('0.4.1', True))
+
+    def test_real_home_requires_a_protected_record(self):
+        with mock.patch.object(installer, 'protected', return_value=False):
+            status = self.status('0.4.1', self.state('0.4.1'))[0]
+        self.assertEqual((status['latest'], status['current']), (None, False))
+
+    @unittest.skipIf(os.name == 'nt' or os.getuid() == 0, 'needs a non-root POSIX user')
+    def test_user_owned_record_is_unprotected(self):
+        # A record a user can write could claim any version; only root's counts.
+        path = self.state('0.4.1')
+        self.assertFalse(installer.protected(path))
+        self.assertEqual(installer.updater_latest(path, now=self.NOW), (None, None))
 
 
 if __name__ == '__main__':
