@@ -261,10 +261,11 @@ class GuardStatusTests(unittest.TestCase):
 
     def test_record_beside_the_installed_guard(self):
         # Each default binary pairs with the updater that installs it, under the same protected root.
-        self.assertEqual(installer.updater_state_path(installer.GUARD_PATHS[0]),
-                         pathlib.Path('/Library/Application Support/ClaudeCode/agent-guard-updater/state.json'))
-        self.assertEqual(installer.updater_state_path(installer.GUARD_PATHS[1]),
-                         pathlib.Path(r'C:\Program Files\ClaudeCode\agent-guard-updater\state.json'))
+        # Pure paths of each host's flavour, so both assertions hold on Windows and POSIX.
+        self.assertEqual(installer.updater_state_path(pathlib.PurePosixPath(installer.GUARD_PATHS[0].as_posix())),
+                         pathlib.PurePosixPath('/Library/Application Support/ClaudeCode/agent-guard-updater/state.json'))
+        self.assertEqual(installer.updater_state_path(pathlib.PureWindowsPath(str(installer.GUARD_PATHS[1]))),
+                         pathlib.PureWindowsPath(r'C:\Program Files\ClaudeCode\agent-guard-updater\state.json'))
         binary = self.root / 'agent-guard' / 'agent-guard.exe'
         binary.parent.mkdir()
         binary.touch()
