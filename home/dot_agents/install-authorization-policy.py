@@ -27,6 +27,13 @@ CODEX_GUARD_HOOKS = pathlib.Path('.codex/hooks.json')
 # references/rollout.md, "Automatic rollout"). Each updater run records in state.json the version
 # of the newest build it accepts as release_considered; SYSTEM or root writes it, and users read it.
 STATE_MAX_AGE = 2*3600  # The updater runs every 15 minutes; an older record is not an answer.
+# Hand-written Claude autoMode environment entries Royal retired (2026-10-18): each
+# contradicts the policy's grants, and the classifier reads it beside the policy.
+RETIRED_ENVIRONMENT = (
+    # Says opening MRs and merging need a go; superseded by the 5 Oct widening, the
+    # 14 Oct teammate grant and "Autonomous work".
+    re.compile(r'^\**Standing authorizations \(AGENTS\.md, 2026-10-01\)'),
+)
 
 def read_exact(path):
     with path.open(encoding='utf-8',newline='') as f:
@@ -226,6 +233,7 @@ def main():
             if '$defaults' not in values: raise ValueError(str(path)+': reconcile custom '+key+' without $defaults first')
             previous=saved.get(key)
             if previous is not None: values=[v for v in values if v!=previous]
+            if key=='environment': values=[v for v in values if not any(r.match(v) for r in RETIRED_ENVIRONMENT)]
             if any(v.startswith('[shared-authorization-policy]') and v!=entry for v in values): raise ValueError('untracked generated Claude entry')
             if entry not in values: values.append(entry)
             auto[key]=values; generated[key]=entry

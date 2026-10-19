@@ -179,6 +179,18 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(list(json.loads(path.read_bytes())), ['token', 't3_runtime_modes'])
         self.assertEqual(legacy.read_bytes(), old)
 
+    def test_retired_environment_entry_is_removed_and_others_kept(self):
+        stale = '**Standing authorizations (AGENTS.md, 2026-10-01)**: opening an MR or merging needs a go'
+        kept = '**Standing authorizations (AGENTS.md, 2026-11-01)**: a later entry stays'
+        path = self.write('.claude/settings.json', json.dumps({'autoMode': {
+            'environment': ['$defaults', 'custom env', stale, kept]}}))
+        self.run_installer('--apply')
+        env = json.loads(path.read_bytes())['autoMode']['environment']
+        self.assertNotIn(stale, env)
+        self.assertIn('custom env', env)
+        self.assertIn(kept, env)
+        self.assertEqual(self.run_installer()['changed_paths'], [])
+
     def test_claude_replaces_saved_entry_and_keeps_defaults(self):
         path = self.write('.claude/settings.json', json.dumps({'autoMode': {
             'allow': ['$defaults', 'custom', '[shared-authorization-policy] old allow'],
