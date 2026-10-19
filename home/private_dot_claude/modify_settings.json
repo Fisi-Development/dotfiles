@@ -92,4 +92,42 @@
 {{- end -}}
 {{- $_ := set $perms "allow" $allow -}}
 {{- $_ := set $settings "permissions" $perms -}}
+{{- /*
+  Added 2026-10-18 (tool-call audit): hook timeouts and the Lore bridge move.
+
+  Every command hook without a timeout gets one, so a wedged hook cannot hold
+  a turn for Claude Code's 600 s default: 600 for PermissionRequest (it may
+  wait on a person, so its behavior is unchanged), 30 for everything else.
+
+  Windows: since 2026-10-16 C:\Users\gwmai\git is a Dev Drive volume mount.
+  The Harbor Lore bridge refuses any reparse-point parent, so its release under
+  git\harbor\.local\lore-hooks failed on every hook call. Its release now lives,
+  byte for byte, under ~/.harbor/lore-hooks (Harbor tools/stage_lore_hooks.py).
+  The hook command carries the path inside a Base64 loader, so this decodes the
+  loader, swaps the path and re-encodes it, only once the new release exists.
+*/ -}}
+{{- $loreOld := `C:\Users\gwmai\git\harbor\.local\lore-hooks\` -}}
+{{- $loreNew := `C:\Users\gwmai\.harbor\lore-hooks\` -}}
+{{- $loreMoved := and (eq .chezmoi.os "windows") (stat (joinPath .chezmoi.homeDir ".harbor" "lore-hooks")) -}}
+{{- if hasKey $settings "hooks" -}}
+{{-   range $event, $groups := index $settings "hooks" -}}
+{{-     range $group := $groups -}}
+{{-       range $hook := (index $group "hooks") -}}
+{{-         if eq (index $hook "type" | default "command") "command" -}}
+{{-           if not (hasKey $hook "timeout") -}}
+{{-             $_ := set $hook "timeout" (ternary 600 30 (eq $event "PermissionRequest")) -}}
+{{-           end -}}
+{{-           $cmd := index $hook "command" | default "" -}}
+{{-           if and $loreMoved (contains "FromBase64String('" $cmd) -}}
+{{-             $b64 := regexReplaceAll `(?s)^.*FromBase64String\('([A-Za-z0-9+/=]+)'\).*$` $cmd "${1}" -}}
+{{-             $loader := b64dec $b64 -}}
+{{-             if contains $loreOld $loader -}}
+{{-               $_ := set $hook "command" (replace $b64 (b64enc (replace $loreOld $loreNew $loader)) $cmd) -}}
+{{-             end -}}
+{{-           end -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
 {{- toPrettyJson $settings | trim }}

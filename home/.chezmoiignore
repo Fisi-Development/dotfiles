@@ -55,6 +55,11 @@
 install-fish-plugins.sh
 {{ end }}
 
+{{ if not (stat (joinPath .chezmoi.homeDir ".grok" "hooks" "lore.json")) }}
+# Grok's Lore hook file exists only where Harbor's stager installed it (the desktop).
+.grok
+{{ end }}
+
 # DigitalOcean MCP wrapper: one per OS family.
 {{ if eq .chezmoi.os "windows" }}
 .agents/bin/do-mcp
