@@ -14,12 +14,14 @@ GUARD_PATHS = (
     pathlib.Path(r'C:\Program Files\ClaudeCode\agent-guard\agent-guard.exe'),
     pathlib.Path('/etc/claude-code/agent-guard/agent-guard'),
 )
-# agent-guard gates Claude Code's PreToolUse and, through its plugin, OpenCode's
-# tool calls (agent-guard SKILL.md, "Harness coverage"), so those follow the guard
-# check. OpenCode counts only where the plugin is installed. Codex keeps the mode
-# its host config already sets: full access there has no per-action gate.
-GUARDED_HARNESSES = ('claude', 'opencode')
+# agent-guard gates Claude Code's PreToolUse, Codex's pre_tool_use hook and, through
+# its plugin, OpenCode's tool calls (agent-guard SKILL.md, "Harness coverage"; live
+# probes on every host 2026-10-18), so all three follow the guard check (Royal,
+# 2026-10-18). Codex counts only where its hooks.json registers the guard, OpenCode
+# only where the plugin is installed; elsewhere they get auto.
+GUARDED_HARNESSES = ('claude', 'codex', 'opencode')
 OPENCODE_GUARD_PLUGIN = pathlib.Path('.config/opencode/plugins/agent-guard.ts')
+CODEX_GUARD_HOOKS = pathlib.Path('.codex/hooks.json')
 # agent-guard ships as successful main push builds of .github/workflows/agent-guard.yml in
 # Fisi-Development/harbor, which the root updater beside each guard installs (skills/agent-guard/
 # references/rollout.md, "Automatic rollout"). Each updater run records in state.json the version
@@ -74,6 +76,11 @@ def agent_guard_status(guard_bin=None, state_path=None, fixture=False, now=None)
             'latest':'.'.join(map(str,latest)) if latest is not None else None,
             'updater_checked_at':checked,
             'current':installed is not None and latest is not None and installed>=latest}
+
+def codex_hooked(home):
+    """Codex counts as guarded only where its hooks.json runs agent-guard."""
+    try: return 'agent-guard' in (home/CODEX_GUARD_HOOKS).read_text(encoding='utf-8')
+    except (OSError,UnicodeError): return False
 
 def remove_block(text, start, end):
     if start not in text and end not in text: return text
@@ -179,7 +186,8 @@ def main():
         modes=d.setdefault('t3_runtime_modes',{})
         before=dict(before) if before is not None else None
         for harness in GUARDED_HARNESSES:
-            plugged=harness!='opencode' or (home/OPENCODE_GUARD_PLUGIN).exists()
+            plugged={'opencode':lambda:(home/OPENCODE_GUARD_PLUGIN).exists(),
+                     'codex':lambda:codex_hooked(home)}.get(harness,lambda:True)()
             modes[harness]=mode if plugged else 'auto'
         generated=json.dumps(d,indent=2)
         if '\r\n' in old: generated=generated.replace('\n','\r\n')
@@ -204,7 +212,7 @@ def main():
         return content.split('## '+title+'\n\n',1)[1].split('\n## ',1)[0].strip()
     # Claude's classifier reads allow entries as exceptions to its block rules;
     # each grant that should lift a default block goes here.
-    allow='\n\n'.join(section(t) for t in ('Authorized company GLM review',"Royal's GitHub repositories",'Telepathica commands','Chezmoi rollout','Launch modes'))
+    allow='\n\n'.join(section(t) for t in ('Autonomous work','Authorized company GLM review',"Royal's GitHub repositories",'Telepathica commands','Chezmoi rollout','Launch modes'))
     # One Claude home per host since 2026-10-13 (the Mac's ~/.claude-personal was
     # merged into ~/.claude), so a stray recreated personal home is left alone.
     for name in ('.claude',):

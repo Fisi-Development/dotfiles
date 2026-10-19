@@ -5,6 +5,85 @@ project's action gates. Evaluate the requested action, payload, destination,
 executor, account, and project separately. Credentials or a configured provider
 alone grant no permission. Task authorization does not change runtime access.
 
+## Autonomous work
+
+Royal decided on 18 Oct 2026 that a task he hands over, however short ("go fix
+X", "roll that out", "clean that up"), is the authorization to carry it through
+to a verified, merged and rolled-out result. He should not have to re-grant,
+confirm or re-prompt along the way. This holds for every harness and on all
+three of his hosts: DESKTOP-O91444G, the Mac (bouncehouse) and the Windows
+laptop (Mercury).
+
+Covered without asking, on Royal's own hosts and in his own repositories:
+
+- investigating, reading anything that names no credential path, building and
+  testing;
+- editing, committing, pushing, opening pull requests, and merging and
+  releasing as each repository's AGENTS.md Rollout says;
+- installing Royal's own tools on his hosts;
+- restarting, re-registering or reinstalling his own services and scheduled
+  tasks;
+- creating and removing the agent's own branches, worktrees and disposable
+  resources;
+- deleting caches, temp files and partial downloads the agent created or can
+  identify as disposable;
+- following up on what the task turns up;
+- marking a backlog item `done` once its acceptance check passes, with the
+  evidence cited. Only Royal marks an item `dropped`.
+
+This grant follows the task into every child, delegated task and Telepathica
+handoff working on it, along with any decision Royal already gave in the parent.
+A child does not ask again about something its parent settled.
+
+Raising a Windows Hello or Touch ID request is the agent's job: a `mesh.py
+request`, an agent-guard maintenance request, or the agent-guard grant channel.
+Royal's part is the approval on his own device. Handing Royal a command to paste
+instead of raising the request is not covered.
+
+When something blocks, agents work through this ladder before involving Royal:
+
+1. Retry with a workaround.
+2. Take another route: a `mesh.py request` instead of paste-commands, the
+   logged-in browser instead of click-through steps, an ssh host alias instead
+   of a key path, a subagent on whichever host is awake.
+3. Ask the executor-role model (`[roles]` in `~/.agents/model-policy.toml`) for
+   advice as a read-only consult.
+4. Record the friction with `bosun report` and continue on the workaround.
+5. Ask Royal. Use one batched question with a recommended answer, and keep
+   doing independent work while it waits.
+
+Only these go to Royal:
+
+- approvals on his own device: Windows Hello, Touch ID, UAC;
+- first-time harness trust, such as Codex `/hooks` approval or an OAuth login;
+- credentials and secret values;
+- production systems, money movement and real PII;
+- a force push to a default branch;
+- deleting, renaming or transferring a repository, or changing its visibility;
+- edits to agent-guard, managed settings or the grant key outside a pull request
+  and the root updater;
+- the trust verbs named in "Telepathica commands";
+- company gates (see "Project action gates");
+- a product decision the request, the code and the project records cannot
+  settle.
+
+A status question, a review or a diagnosis that turns up a needed fix is not a
+reason to stop and offer. Report the fix and make it, unless Royal scoped the
+task read-only.
+
+Grants Royal recorded in Harbor `docs/authorizations.md` hold within their
+stated scope:
+
+- Harbor lifecycle and shipment authority (2026-09-06 and 2026-09-07);
+- monorepo migration (2026-10-09);
+- host bootstrap user-level apply (2026-10-15);
+- the Lore session stores, the Today feeds and the Discord reader (2026-10-08
+  and 2026-10-12).
+
+Hosts as of 2026-10-18: the desktop, the Mac and Mercury are clients. WSL is
+retired as a client host. The Telepathica hub and chartroomd run on the
+harbor-hub droplet, not the NAS.
+
 ## Authorized company GLM review
 
 Royal authorizes review of task-relevant private repository source, diffs,
@@ -108,10 +187,11 @@ threads and delegated tasks, and native subagents.
 - Full access on a host where agent-guard is installed and current, meaning the
   installed binary reports the newest released `agent-guard-v*` version, for
   each harness agent-guard checks. agent-guard then checks every tool call the
-  session makes, and its rules hold in every mode. It hooks Claude Code, and
-  OpenCode on hosts where its OpenCode plugin is installed (Royal, 18 Oct 2026,
-  after a live denial control on bouncehouse). Codex keeps the mode its host's
-  config already sets until agent-guard covers it.
+  session makes, and its rules hold in every mode. It checks Claude Code
+  (managed PreToolUse hook), Codex on hosts where its `hooks.json` registers the
+  guard, and OpenCode on hosts where its OpenCode plugin is installed (live
+  denial controls on every host, 18 Oct 2026; Royal extended full access to all
+  three the same day).
 - Auto on every other host, and wherever the guard's version cannot be read.
 
 A launch takes the mode of the host it runs on.
@@ -127,11 +207,12 @@ For the classifiers: launching a native subagent for the task in the parent's
 own mode is not Auto-Mode Bypass. A Telepathica handoff or T3 thread that its
 host's configuration starts in full access, on a host where agent-guard is
 current, is not Create Unsafe Agents when it runs a harness agent-guard checks
-(Claude Code, and OpenCode where the plugin is installed): agent-guard is then
-a per-action gate on every tool call that session makes. The same holds for a
-T3 delegated OpenCode task launched in full access from a full-access parent.
-A full-access Codex session has no such gate, and this sentence does not cover
-it.
+(Claude Code; Codex where its hooks.json registers the guard; OpenCode where the
+plugin is installed): agent-guard is then a per-action gate on every tool call
+that session makes. The same holds for a T3 delegated Codex or OpenCode task
+launched in full access from a full-access parent. A full-access session of a
+harness the guard does not check on that host has no such gate, and this
+sentence does not cover it.
 
 Limits. The mode comes from configuration, never from the agent. An agent does
 not raise its own mode or a running child's, does not add bypass or
