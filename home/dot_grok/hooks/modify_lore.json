@@ -1,0 +1,37 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  Grok's Lore hooks, written by Harbor tools/stage_lore_hooks.py. Every key
+  passes through untouched except the bridge path below.
+
+  Added 2026-10-18: since 2026-10-16 C:\Users\gwmai\git is a Dev Drive volume
+  mount, and the Harbor Lore bridge refuses any reparse-point parent, so its
+  release under git\harbor\.local\lore-hooks failed on every hook call. The
+  release now lives, byte for byte, under ~/.harbor/lore-hooks. The command
+  carries the path inside a Base64 loader, so this decodes the loader, swaps
+  the path and re-encodes it, once the new release exists. The twin for Claude
+  is private_dot_claude/modify_settings.json. .chezmoiignore skips this file
+  on hosts without a Grok Lore hook file.
+*/ -}}
+{{- $doc := dict -}}
+{{- if trim .chezmoi.stdin -}}
+{{-   $doc = fromJson .chezmoi.stdin -}}
+{{- end -}}
+{{- $loreOld := `C:\Users\gwmai\git\harbor\.local\lore-hooks\` -}}
+{{- $loreNew := `C:\Users\gwmai\.harbor\lore-hooks\` -}}
+{{- if and (hasKey $doc "hooks") (stat (joinPath .chezmoi.homeDir ".harbor" "lore-hooks")) -}}
+{{-   range $event, $groups := index $doc "hooks" -}}
+{{-     range $group := $groups -}}
+{{-       range $hook := (index $group "hooks") -}}
+{{-         $cmd := index $hook "command" | default "" -}}
+{{-         if contains "FromBase64String('" $cmd -}}
+{{-           $b64 := regexReplaceAll `(?s)^.*FromBase64String\('([A-Za-z0-9+/=]+)'\).*$` $cmd "${1}" -}}
+{{-           $loader := b64dec $b64 -}}
+{{-           if contains $loreOld $loader -}}
+{{-             $_ := set $hook "command" (replace $b64 (b64enc (replace $loreOld $loreNew $loader)) $cmd) -}}
+{{-           end -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- toPrettyJson $doc | trim }}
