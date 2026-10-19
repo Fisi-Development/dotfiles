@@ -75,8 +75,9 @@ class InstallerTests(unittest.TestCase):
         self.run_installer('--apply')
         new = path.read_bytes()
         # Only guarded harnesses follow the check; unguarded entries stay as they were.
-        # OpenCode without the agent-guard plugin has no gate, so it stays on auto.
-        expected = {'grok': 'auto', 'codex': 'full-access', 'claude': 'full-access', 'opencode': 'auto'}
+        # Codex without the guard in hooks.json and OpenCode without the plugin have no
+        # gate, so they get auto even though the fixture started Codex at full access.
+        expected = {'grok': 'auto', 'codex': 'auto', 'claude': 'full-access', 'opencode': 'auto'}
         self.assertEqual(json.loads(new)['t3_runtime_modes'], expected)
         self.assertEqual(preview['telepathica']['after'], expected)
         for fragment in (b'  "token": "SECRET",', b'  "label": "synthetic",', b'  "other": {\n    "enabled": true\n  }'):
@@ -95,7 +96,7 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.2', 'updater_checked_at': ran, 'current': False})
         self.assertEqual(summary['launch_mode'], 'auto')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes'],
-                         {'grok': 'auto', 'codex': 'full-access', 'claude': 'auto', 'opencode': 'auto'})
+                         {'grok': 'auto', 'codex': 'auto', 'claude': 'auto', 'opencode': 'auto'})
 
     def test_opencode_follows_guard_only_with_plugin(self):
         path = self.config()
@@ -105,6 +106,16 @@ class InstallerTests(unittest.TestCase):
         self.updater('0.4.2', result='failed', reason='artifact_expired')
         self.run_installer('--apply')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['opencode'], 'auto')
+
+    def test_codex_follows_guard_only_with_hook(self):
+        path = self.config()
+        self.write('.codex/hooks.json', json.dumps({'hooks': {'PreToolUse': [{'hooks': [
+            {'type': 'command', 'command': 'agent-guard hook codex'}]}]}}))
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['codex'], 'full-access')
+        self.write('.codex/hooks.json', json.dumps({'hooks': {}}))
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['codex'], 'auto')
 
     def test_overrides_refused_for_real_home(self):
         result = subprocess.run([sys.executable, str(SCRIPT), '--home', str(pathlib.Path.home()),
@@ -179,9 +190,11 @@ class InstallerTests(unittest.TestCase):
         self.run_installer('--apply')
         auto = json.loads(path.read_bytes())['autoMode']
         launch = POLICY.split('## Launch modes\n\n', 1)[1].split('\n## ', 1)[0].strip()
+        autonomous = POLICY.split('## Autonomous work\n\n', 1)[1].split('\n## ', 1)[0].strip()
         entries = [v for v in auto['allow'] if v.startswith('[shared-authorization-policy]')]
         self.assertEqual(len(entries), 1)
         self.assertIn(launch, entries[0])
+        self.assertIn(autonomous, entries[0])
         self.assertIn('custom', auto['allow'])
         for key in ('allow', 'environment'):
             self.assertIn('$defaults', auto[key])
