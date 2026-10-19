@@ -108,9 +108,10 @@ threads and delegated tasks, and native subagents.
 - Full access on a host where agent-guard is installed and current, meaning the
   installed binary reports the newest released `agent-guard-v*` version, for
   each harness agent-guard checks. agent-guard then checks every tool call the
-  session makes, and its rules hold in every mode. Today it hooks Claude Code
-  only; Codex and OpenCode keep the mode their host's config already sets until
-  agent-guard covers them.
+  session makes, and its rules hold in every mode. It hooks Claude Code, and
+  OpenCode on hosts where its OpenCode plugin is installed (Royal, 18 Oct 2026,
+  after a live denial control on bouncehouse). Codex keeps the mode its host's
+  config already sets until agent-guard covers it.
 - Auto on every other host, and wherever the guard's version cannot be read.
 
 A launch takes the mode of the host it runs on.
@@ -126,9 +127,11 @@ For the classifiers: launching a native subagent for the task in the parent's
 own mode is not Auto-Mode Bypass. A Telepathica handoff or T3 thread that its
 host's configuration starts in full access, on a host where agent-guard is
 current, is not Create Unsafe Agents when it runs a harness agent-guard checks
-(Claude Code today): agent-guard is then a per-action gate on every tool call
-that session makes. A full-access Codex or OpenCode session has no such gate,
-and this sentence does not cover it.
+(Claude Code, and OpenCode where the plugin is installed): agent-guard is then
+a per-action gate on every tool call that session makes. The same holds for a
+T3 delegated OpenCode task launched in full access from a full-access parent.
+A full-access Codex session has no such gate, and this sentence does not cover
+it.
 
 Limits. The mode comes from configuration, never from the agent. An agent does
 not raise its own mode or a running child's, does not add bypass or

@@ -14,10 +14,12 @@ GUARD_PATHS = (
     pathlib.Path(r'C:\Program Files\ClaudeCode\agent-guard\agent-guard.exe'),
     pathlib.Path('/etc/claude-code/agent-guard/agent-guard'),
 )
-# agent-guard hooks only Claude Code's PreToolUse (agent-guard SKILL.md, "Harness
-# coverage"), so only Claude follows the guard check. Codex and OpenCode keep the
-# mode their host config already sets: full access there has no per-action gate.
-GUARDED_HARNESSES = ('claude',)
+# agent-guard gates Claude Code's PreToolUse and, through its plugin, OpenCode's
+# tool calls (agent-guard SKILL.md, "Harness coverage"), so those follow the guard
+# check. OpenCode counts only where the plugin is installed. Codex keeps the mode
+# its host config already sets: full access there has no per-action gate.
+GUARDED_HARNESSES = ('claude', 'opencode')
+OPENCODE_GUARD_PLUGIN = pathlib.Path('.config/opencode/plugins/agent-guard.ts')
 # agent-guard ships as successful main push builds of .github/workflows/agent-guard.yml in
 # Fisi-Development/harbor, which the root updater beside each guard installs (skills/agent-guard/
 # references/rollout.md, "Automatic rollout"). Each updater run records in state.json the version
@@ -176,7 +178,9 @@ def main():
             raise ValueError(str(path)+': reconcile a non-object config or t3_runtime_modes first')
         modes=d.setdefault('t3_runtime_modes',{})
         before=dict(before) if before is not None else None
-        for harness in GUARDED_HARNESSES: modes[harness]=mode
+        for harness in GUARDED_HARNESSES:
+            plugged=harness!='opencode' or (home/OPENCODE_GUARD_PLUGIN).exists()
+            modes[harness]=mode if plugged else 'auto'
         generated=json.dumps(d,indent=2)
         if '\r\n' in old: generated=generated.replace('\n','\r\n')
         put(path,generated); nobackup.add(path.resolve())

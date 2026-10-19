@@ -74,8 +74,9 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(preview['launch_mode'], 'full-access')
         self.run_installer('--apply')
         new = path.read_bytes()
-        # Only the guarded harness follows the check; unguarded entries stay as they were.
-        expected = {'grok': 'auto', 'codex': 'full-access', 'claude': 'full-access'}
+        # Only guarded harnesses follow the check; unguarded entries stay as they were.
+        # OpenCode without the agent-guard plugin has no gate, so it stays on auto.
+        expected = {'grok': 'auto', 'codex': 'full-access', 'claude': 'full-access', 'opencode': 'auto'}
         self.assertEqual(json.loads(new)['t3_runtime_modes'], expected)
         self.assertEqual(preview['telepathica']['after'], expected)
         for fragment in (b'  "token": "SECRET",', b'  "label": "synthetic",', b'  "other": {\n    "enabled": true\n  }'):
@@ -94,8 +95,16 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.2', 'updater_checked_at': ran, 'current': False})
         self.assertEqual(summary['launch_mode'], 'auto')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes'],
-                         {'grok': 'auto', 'codex': 'full-access', 'claude': 'auto'})
-        self.assertNotIn('opencode', json.loads(path.read_bytes())['t3_runtime_modes'])
+                         {'grok': 'auto', 'codex': 'full-access', 'claude': 'auto', 'opencode': 'auto'})
+
+    def test_opencode_follows_guard_only_with_plugin(self):
+        path = self.config()
+        self.write('.config/opencode/plugins/agent-guard.ts', '// synthetic plugin\n')
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['opencode'], 'full-access')
+        self.updater('0.4.2', result='failed', reason='artifact_expired')
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['opencode'], 'auto')
 
     def test_overrides_refused_for_real_home(self):
         result = subprocess.run([sys.executable, str(SCRIPT), '--home', str(pathlib.Path.home()),
