@@ -1,0 +1,58 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  Kept identical in dot_codex/ and dot_codex-work/ (modify templates cannot
+  include .chezmoitemplates).
+  Codex owns hooks.json (Telepathica, run-meter and Lore installers write it),
+  so this passes every entry through and only adds or removes the full-send
+  skill's `.stop` hook (skills/full-send, references/stop.md) on
+  UserPromptSubmit, PreToolUse and Stop. The entries are appended at the end of
+  each event, so the positions Codex keys its hook trust on do not move.
+  Present only while the skill is linked on this host: a missing script exits
+  2, which blocks the prompt. Codex runs a new hook only after it is trusted
+  once in the TUI (/hooks). With nothing to add or remove, the file passes
+  through byte for byte.
+*/ -}}
+{{- $doc := dict -}}
+{{- if trim .chezmoi.stdin -}}
+{{-   $doc = fromJson .chezmoi.stdin -}}
+{{- end -}}
+{{- $home := replace "\\" "/" .chezmoi.homeDir -}}
+{{- $fsScript := printf "%s/.agents/skills/full-send/scripts/ship_verbs.py" $home -}}
+{{- $fsCmd := printf "%s \"%s\" hook codex" (ternary "python" "python3" (eq .chezmoi.os "windows")) $fsScript -}}
+{{- $changed := false -}}
+{{- $hooks := dict -}}
+{{- if hasKey $doc "hooks" -}}
+{{-   $hooks = index $doc "hooks" -}}
+{{- end -}}
+{{- range $event := list "UserPromptSubmit" "PreToolUse" "Stop" -}}
+{{-   $kept := list -}}
+{{-   if hasKey $hooks $event -}}
+{{-     range $group := index $hooks $event -}}
+{{-       $mine := false -}}
+{{-       range $h := (index $group "hooks") -}}
+{{-         if contains "full-send/scripts/ship_verbs.py" (index $h "command" | default "") -}}
+{{-           $mine = true -}}
+{{-           $changed = true -}}
+{{-         end -}}
+{{-       end -}}
+{{-       if not $mine -}}
+{{-         $kept = append $kept $group -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if stat $fsScript -}}
+{{-     $changed = true -}}
+{{-     $kept = append $kept (dict "matcher" "" "hooks" (list (dict "type" "command" "command" $fsCmd "timeout" 15))) -}}
+{{-   end -}}
+{{-   if $kept -}}
+{{-     $_ := set $hooks $event $kept -}}
+{{-   else if hasKey $hooks $event -}}
+{{-     $_ := unset $hooks $event -}}
+{{-   end -}}
+{{- end -}}
+{{- if $changed -}}
+{{-   $_ := set $doc "hooks" $hooks -}}
+{{-   toPrettyJson $doc | trim }}
+{{- else -}}
+{{-   .chezmoi.stdin -}}
+{{- end -}}

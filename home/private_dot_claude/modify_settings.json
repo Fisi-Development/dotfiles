@@ -130,4 +130,44 @@
 {{-     end -}}
 {{-   end -}}
 {{- end -}}
+{{- /*
+  Added 2026-10-20: the full-send skill's `.stop` hook (skills/full-send,
+  references/stop.md). One script on UserPromptSubmit, PreToolUse and Stop.
+  Present only while the skill is linked on this host: a hook whose script is
+  missing would exit 2, and exit 2 blocks every prompt. Old copies are removed
+  first, so a moved path converges.
+*/ -}}
+{{- $fsScript := printf "%s/.agents/skills/full-send/scripts/ship_verbs.py" $home -}}
+{{- $fsCmd := printf "%s \"%s\" hook claude" (ternary "python" "python3" (eq .chezmoi.os "windows")) $fsScript -}}
+{{- $fsHooks := dict -}}
+{{- if hasKey $settings "hooks" -}}
+{{-   $fsHooks = index $settings "hooks" -}}
+{{- end -}}
+{{- range $event := list "UserPromptSubmit" "PreToolUse" "Stop" -}}
+{{-   $kept := list -}}
+{{-   if hasKey $fsHooks $event -}}
+{{-     range $group := index $fsHooks $event -}}
+{{-       $mine := false -}}
+{{-       range $h := (index $group "hooks") -}}
+{{-         if contains "full-send/scripts/ship_verbs.py" (index $h "command" | default "") -}}
+{{-           $mine = true -}}
+{{-         end -}}
+{{-       end -}}
+{{-       if not $mine -}}
+{{-         $kept = append $kept $group -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if stat $fsScript -}}
+{{-     $kept = append $kept (dict "matcher" "" "hooks" (list (dict "type" "command" "command" $fsCmd "timeout" 15))) -}}
+{{-   end -}}
+{{-   if $kept -}}
+{{-     $_ := set $fsHooks $event $kept -}}
+{{-   else if hasKey $fsHooks $event -}}
+{{-     $_ := unset $fsHooks $event -}}
+{{-   end -}}
+{{- end -}}
+{{- if $fsHooks -}}
+{{-   $_ := set $settings "hooks" $fsHooks -}}
+{{- end -}}
 {{- toPrettyJson $settings | trim }}

@@ -73,3 +73,16 @@ install-fish-plugins.sh
 {{ if ne .chezmoi.hostname "DESKTOP-O91444G" }}
 AppData/Local/pnpm
 {{ end }}
+
+{{ if not (stat (joinPath .chezmoi.homeDir ".codex" "hooks.json")) }}
+# Codex hooks.json is Codex's own file; the full-send hook is merged into it
+# only where Codex already wrote one.
+.codex/hooks.json
+{{ end }}
+{{ if not (stat (joinPath .chezmoi.homeDir ".codex-work" "hooks.json")) }}
+.codex-work/hooks.json
+{{ end }}
+{{ if not (stat (joinPath .chezmoi.homeDir ".agents" "skills" "full-send" "plugins" "opencode" "full-send.js")) }}
+# The full-send OpenCode plugin link waits until the skill is linked here.
+.config/opencode/plugins/full-send.js
+{{ end }}
