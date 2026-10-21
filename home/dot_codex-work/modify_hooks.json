@@ -10,7 +10,8 @@
   Present only while the skill is linked on this host: a missing script exits
   2, which blocks the prompt. Codex runs a new hook only after it is trusted
   once in the TUI (/hooks). With nothing to add or remove, the file passes
-  through byte for byte.
+  through byte for byte; once the entries are added, the file is rewritten
+  with sorted keys (event arrays keep their order).
 */ -}}
 {{- $doc := dict -}}
 {{- if trim .chezmoi.stdin -}}
