@@ -134,8 +134,8 @@
   Added 2026-10-20: the full-send skill's `.stop` hook (skills/full-send,
   references/stop.md). One script on UserPromptSubmit, PreToolUse and Stop.
   Present only while the skill is linked on this host: a hook whose script is
-  missing would exit 2, and exit 2 blocks every prompt. Old copies are removed
-  first, so a moved path converges.
+  missing would exit 2, and exit 2 blocks every prompt. An existing entry keeps
+  its place and gets the current command; a missing one is appended.
 */ -}}
 {{- $fsScript := printf "%s/.agents/skills/full-send/scripts/ship_verbs.py" $home -}}
 {{- $fsCmd := printf "%s \"%s\" hook claude" (ternary "python" "python3" (eq .chezmoi.os "windows")) $fsScript -}}
@@ -143,8 +143,11 @@
 {{- if hasKey $settings "hooks" -}}
 {{-   $fsHooks = index $settings "hooks" -}}
 {{- end -}}
+{{- $fsEntry := dict "matcher" "" "hooks" (list (dict "type" "command" "command" $fsCmd "timeout" 15)) -}}
+{{- $fsPresent := stat $fsScript -}}
 {{- range $event := list "UserPromptSubmit" "PreToolUse" "Stop" -}}
 {{-   $kept := list -}}
+{{-   $placed := false -}}
 {{-   if hasKey $fsHooks $event -}}
 {{-     range $group := index $fsHooks $event -}}
 {{-       $mine := false -}}
@@ -155,11 +158,14 @@
 {{-       end -}}
 {{-       if not $mine -}}
 {{-         $kept = append $kept $group -}}
+{{-       else if and $fsPresent (not $placed) -}}
+{{-         $placed = true -}}
+{{-         $kept = append $kept $fsEntry -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
-{{-   if stat $fsScript -}}
-{{-     $kept = append $kept (dict "matcher" "" "hooks" (list (dict "type" "command" "command" $fsCmd "timeout" 15))) -}}
+{{-   if and $fsPresent (not $placed) -}}
+{{-     $kept = append $kept $fsEntry -}}
 {{-   end -}}
 {{-   if $kept -}}
 {{-     $_ := set $fsHooks $event $kept -}}
