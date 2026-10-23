@@ -25,6 +25,9 @@
 .zshrc
 .zprofile
 .zshenv
+# dot_bashrc is macOS-authored too (it sources broot from ~/Library and adds
+# /Users/royalaid paths), so a Linux host keeps its own .bashrc.
+.bashrc
 {{ end }}
 
 {{ if eq .chezmoi.os "darwin" }}
