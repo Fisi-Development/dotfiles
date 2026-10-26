@@ -1,0 +1,5 @@
+{{- /* Top-level Codex settings (project_doc_max_bytes); see ~/.agents/bin/codex_settings.py. Empty, so skipped, off Windows. */ -}}
+{{- if eq .chezmoi.os "windows" -}}
+# Runs after every apply: Codex owns config.toml, so the setting is patched in place.
+python "{{ .chezmoi.homeDir }}\.agents\bin\codex_settings.py"
+{{ end -}}
