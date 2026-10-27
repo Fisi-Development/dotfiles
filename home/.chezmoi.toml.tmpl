@@ -16,3 +16,8 @@ encryption = "age"
 [age]
     identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/key.txt"
     recipient = "age1lv2005vklsw28thvxrxxt96s77ezau0qmrx8tnfr3c27s02f0dcsdjtz57"
+{{ if eq .chezmoi.os "windows" }}
+[diff]
+    # Agent sessions set PAGER=cat without cat on PATH.
+    pager = ""
+{{ end -}}
