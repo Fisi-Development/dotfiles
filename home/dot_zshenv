@@ -5,3 +5,12 @@ if [ -d "$HOME/.cargo/bin" ]; then
     esac
 fi
 export PATH
+
+# Agent harnesses write bash. With fish as the login shell, Claude Code and
+# Codex fall back to zsh and run each command as `zsh -c`; OpenCode does too.
+# Give those command strings bash's word splitting and glob handling. An
+# interactive zsh and a zsh script file keep zsh semantics.
+if [[ ! -o interactive && -n $ZSH_EXECUTION_STRING ]] &&
+    [[ -n $CLAUDECODE || -n $CODEX_THREAD_ID || -n $OPENCODE ]]; then
+    setopt sh_word_split no_nomatch no_equals
+fi
