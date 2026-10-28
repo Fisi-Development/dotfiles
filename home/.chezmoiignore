@@ -89,3 +89,11 @@ AppData/Local/pnpm
 # The full-send OpenCode plugin link waits until the skill is linked here.
 .config/opencode/plugins/full-send.js
 {{ end }}
+
+{{ if ne .chezmoi.os "linux" }}
+# Go reads ~/.config/go/env only on Linux. There GOTMPDIR moves go's work dirs and link
+# output off /tmp, a small tmpfs with a per-user quota on burnbutu; Harbor's janitor
+# sweeps stale entries in ~/.cache/harbor-build/tmp (docs/runbooks/janitor.md).
+.config/go
+.cache/harbor-build
+{{ end }}
