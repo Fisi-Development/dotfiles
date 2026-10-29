@@ -1,3 +1,6 @@
+# Python bytecode the tests leave beside home/ scripts; git ignores it too.
+**/__pycache__
+
 # fisher-managed plugin files — installed by run_onchange_after_install-fish-plugins.sh
 # from fish_plugins (the single source of truth), NOT tracked by chezmoi. Tracking
 # them caused "file already exists" conflicts when fisher ran on a fresh machine.

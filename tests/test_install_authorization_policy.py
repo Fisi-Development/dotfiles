@@ -225,6 +225,35 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual(data['model'], 'fixture')
         self.assertEqual(self.run_installer()['changed_paths'], [])
 
+    def test_codex_dropped_only_the_end_marker(self):
+        # Codex keeps the start comment above [auto_review] when it rewrites
+        # config.toml but drops the trailing end comment.
+        old = 'extra_policy = ' + json.dumps("# Royal's shared authorization policy\nold")
+        tails = {'.codex': '\n', '.codex-work': '\n\n[later]\nvalue = 2\n'}
+        for name, tail in tails.items():
+            self.write(name + '/config.toml', 'model = "fixture"\n\n[other]\nvalue = 1\n\n'
+                       + installer.TSTART + '\n[auto_review]\n' + old + tail)
+        self.run_installer('--apply')
+        for name, tail in tails.items():
+            with self.subTest(name=name):
+                text = (self.home / name / 'config.toml').read_text()
+                self.assertEqual(text.count(installer.TSTART), 1)
+                self.assertEqual(text.count(installer.TEND), 1)
+                data = tomllib.loads(text)
+                self.assertEqual(data['auto_review']['extra_policy'], PREAMBLE + POLICY)
+                self.assertEqual(data['other'], {'value': 1})
+                if 'later' in tail:
+                    self.assertEqual(data['later'], {'value': 2})
+        self.assertEqual(self.run_installer()['changed_paths'], [])
+
+    def test_codex_dangling_start_marker_over_foreign_table_is_refused(self):
+        self.write('.codex/config.toml', 'model = "fixture"\n\n' + installer.TSTART
+                   + '\n[auto_review]\nextra_policy = "someone else"\n')
+        result = subprocess.run([sys.executable, str(SCRIPT), '--home', str(self.home), '--guard-bin', str(self.guard),
+                                 '--updater-state', str(self.state), '--apply'], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('unmanaged auto_review', result.stderr)
+
     def test_requested_chezmoi_rollout_reaches_all_adapters_with_limits(self):
         self.write('.claude/settings.json', '{}')
         for name in ('.codex', '.codex-work'):

@@ -204,7 +204,12 @@ def main():
     for name in ('.codex','.codex-work'):
         root=home/name; path=root/'config.toml'
         if not path.exists(): continue
-        old=path.read_text(encoding='utf-8'); stripped=remove_block(old,TSTART,TEND)
+        old=path.read_text(encoding='utf-8')
+        if old.count(TSTART)==1 and TEND not in old:
+            # Codex kept the start comment above [auto_review] and dropped the
+            # end comment; drop the dangling start and adopt the table below.
+            old=re.sub(r'^'+re.escape(TSTART)+r'[ \t]*\r?\n','',old,count=1,flags=re.M)
+        stripped=remove_block(old,TSTART,TEND)
         if TSTART not in old:
             stripped=adopt_orphan_auto_review(stripped)
         if 'auto_review' in tomllib.loads(stripped):
