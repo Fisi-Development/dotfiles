@@ -176,4 +176,23 @@
 {{- if $fsHooks -}}
 {{-   $_ := set $settings "hooks" $fsHooks -}}
 {{- end -}}
+{{- /*
+  Added 2026-10-29 (skill visibility audit): the AWS agent skills installed on
+  2026-10-19 carry about 18,000 of the 36,000 description characters in Claude
+  Code's skill listing, which pushed Royal's own skills (own-tools-sync,
+  model-swap, supervise-run, bosun-loop and others) to name-only, so they
+  stopped triggering. These stay listed by name; a skill named here that a host
+  does not install costs nothing. A value Royal set by hand is kept.
+*/ -}}
+{{- $awsNames := list "amazon-bedrock" "aws-ai-ml" "aws-auth" "aws-billing-and-cost-management" "aws-blocks" "aws-cdk" "aws-cloudformation" "aws-compute" "aws-containers" "aws-database" "aws-deployment" "aws-iam" "aws-messaging-and-streaming" "aws-networking" "aws-observability" "aws-sdk-js-v3-usage" "aws-sdk-python-usage" "aws-sdk-swift-usage" "aws-security" "aws-serverless" "aws-storage" "aws-well-architected-review" "launch-with-aws" -}}
+{{- $overrides := dict -}}
+{{- if hasKey $settings "skillOverrides" -}}
+{{-   $overrides = index $settings "skillOverrides" -}}
+{{- end -}}
+{{- range $awsNames -}}
+{{-   if not (hasKey $overrides .) -}}
+{{-     $_ := set $overrides . "name-only" -}}
+{{-   end -}}
+{{- end -}}
+{{- $_ := set $settings "skillOverrides" $overrides -}}
 {{- toPrettyJson $settings | trim }}
