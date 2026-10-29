@@ -13,7 +13,10 @@ Claude entries the installer owns, so regeneration removes only those entries.
 Existing custom arrays without `$defaults` stop for reconciliation instead of
 being silently changed. Existing OpenCode JSON permission entries retain their
 effect; a JSONC layer above existing JSON permissions stops for reconciliation.
-Malformed marker blocks stop before any write. File replacement preserves links
+Malformed marker blocks stop before any write, with one exception: Codex
+rewrites `config.toml` and may drop the end marker or both markers, and the
+installer adopts an `[auto_review]` table that holds only the shared policy
+text. File replacement preserves links
 and is atomic per file, with concurrent-edit checks before application and before each replacement.
 Coordinate a single config writer: filesystem replacement is not a compare-and-
 swap against an uncooperative editor in the final check/replace interval. The
