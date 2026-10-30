@@ -1,6 +1,6 @@
 # Maintain shared agent instructions
 
-Edit `~/AGENTS.md` for shared working preferences. Codex and OpenCode use symlinks to that file, and `~/.claude/CLAUDE.md` imports it with `@~/AGENTS.md`.
+Edit `~/AGENTS.md` for shared working preferences. Personal Codex and OpenCode use symlinks to that file, and `~/.claude/CLAUDE.md` imports it with `@~/AGENTS.md`.
 
 ## Why Claude imports `~/AGENTS.md` by its real path
 
@@ -18,6 +18,7 @@ To check, run a one-shot session from a folder under home with no CLAUDE.md and 
 | --- | --- | --- |
 | `home/encrypted_AGENTS.md.age` | `~/AGENTS.md` | Shared working agreement |
 | `home/dot_codex/symlink_AGENTS.md.tmpl` | `~/.codex/AGENTS.md` | Link to the shared agreement |
+| `home/dot_codex-work/AGENTS.md` | `~/.codex-work/AGENTS.md` | Existing authorization pointer plus a scoped reader for the shared Goal ownership section |
 | `home/dot_config/opencode/symlink_AGENTS.md.tmpl` | `~/.config/opencode/AGENTS.md` | Link to the shared agreement |
 | `home/private_dot_claude/encrypted_CLAUDE.md.age` | `~/.claude/CLAUDE.md` | Shared import and Claude-specific notes |
 
@@ -54,7 +55,9 @@ chezmoi verify ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.cl
 
 Use the equivalent home paths in the active host's shell. A broad apply also changes unrelated managed configuration.
 
-OpenCode refreshes global instructions before the next model request. Start a new Codex session to load the updated agreement. Repository-specific instructions still apply.
+OpenCode refreshes global instructions before the next model request. Start a new Codex session to load updated global guidance. Work Codex reads only `## Goal ownership` from `~/AGENTS.md` through its own global AGENTS.md; its other instructions, configuration, and authentication remain separate. The work file is deployed only where the work home exists, under the existing chezmoi ignore rule.
+
+T3 configures `codex` and `codex_work` as separate provider homes. Updating files alone does not establish that a live provider session reloaded them. For an existing thread, provide a scoped refresh directing it to reread the changed Goal ownership section and applicable skill references, then verify its next action. A fresh session must demonstrate both loading and behavior before claiming activation. Repository-specific instructions still apply.
 
 ## Migration from the previous layout
 
