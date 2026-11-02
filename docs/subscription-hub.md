@@ -66,3 +66,7 @@ On the desktop and Mercury, T3 shows the hub instances as **Codex** (`codex_hub_
 ## Windows file permissions
 
 Files that Codex created in the hub homes while running from a Harbor mesh session ended up with empty access lists on both Windows hosts. The T3 probe then failed with "failed to initialize sqlite state runtime" or "Access is denied". To fix it, reset every entry under the hub home to inherit the folder's permissions (`icacls <entry> /reset /T /C`), except `config.toml` and `settings.json`, which keep their owner-only access lists.
+
+## Account order
+
+Codex requests use the work account first and fall back to the personal account. The hub chooses from the ready accounts with the highest `priority`, so the work auth file carries `"priority": 10` and the personal one keeps the default 0. An account at its quota limit cools down and stops counting as ready, which sends new requests to the next priority until the work quota resets. Change it in the management dashboard (**Auth Files**, then the account's Priority) or with `PATCH /v0/management/auth-files/fields` and `{"name": "<auth file>", "priority": <n>}`. The value is stored in the auth file and survives restarts.
