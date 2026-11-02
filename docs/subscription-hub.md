@@ -1,15 +1,14 @@
 # Set up subscription hub profiles
 
-The installer creates separate client homes for the personal and work hubs without changing default clients or T3 selections. Profiles are staged until hub OAuth works. Claude subscriptions must use Claude Code; the Claude T3 instance stays disabled until its live Claude Code check passes.
+The installer creates client homes that send Codex and Claude through the hub without changing default clients or T3 selections. Profiles are staged until hub OAuth works. Claude subscriptions must use Claude Code; the Claude T3 instance stays disabled until its live Claude Code check passes.
 
-The personal hub is `https://burnbutu.royal-burbot.ts.net:8317`; the work hub uses port `8318`. Each lane has its own account and key. Royal accepted the proxy suspension risk for this setup.
+There is one hub, `https://burnbutu.royal-burbot.ts.net:8317` (systemd user unit `cliproxyapi-personal`). It pools every account, the work Codex account included, so personal requests can use work quota and the reverse; Royal chose this on 2026-11-02. The former work hub (`cliproxyapi-work`, port `8318`) is stopped and disabled, and its files remain for a rollback. Royal accepted the proxy suspension risk for this setup.
 
 ## Provision and install
 
 The parent rollout provisions keys locally over the authenticated Harbor mesh on burnbutu, bouncehouse, desktop, and Mercury. Keep credentials out of shell history, documentation, and git. The installer reads these files and never prints their values:
 
 - `~/.config/cliproxy/personal/access-key`
-- `~/.config/cliproxy/work/access-key`
 
 Run with Python 3.11 or later:
 
@@ -23,7 +22,7 @@ python3 ~/.agents/bin/subscription-hub-profiles.py
 python3 ~/.agents/bin/subscription-hub-profiles.py --t3-settings /absolute/path/to/server-settings.json
 ```
 
-Once OAuth works, repeat with `--register-codex --enable-codex` to enable only `codex_hub_personal` and `codex_hub_work`. Omitting this flag stages both as disabled again. Add `--enable-claude` after the Claude subscription is connected and a real request through Claude Code passes. Omit it to stage Claude as disabled. Existing default selections, other instances, and settings are preserved. Each settings change creates a unique sibling backup before an atomic replacement; no database is changed.
+Once OAuth works, repeat with `--register-codex --enable-codex` to enable `codex_hub_personal`. Omitting this flag stages it as disabled again. Every run turns off the retired `codex_hub_work` instance. Add `--enable-claude` after the Claude subscription is connected and a real request through Claude Code passes. Omit it to stage Claude as disabled. Existing default selections, other instances, and settings are preserved. Each settings change creates a unique sibling backup before an atomic replacement; no database is changed.
 
 ## Launch a separate profile
 
@@ -31,7 +30,6 @@ On POSIX:
 
 ```sh
 env CODEX_HOME="$HOME/.codex-hub-personal" codex
-env CODEX_HOME="$HOME/.codex-hub-work" codex
 env CLAUDE_CONFIG_DIR="$HOME/.claude-hub-personal" claude
 ```
 
@@ -39,11 +37,6 @@ In PowerShell, use a separate terminal for each profile. These environment varia
 
 ```powershell
 $env:CODEX_HOME = Join-Path $HOME '.codex-hub-personal'
-codex
-```
-
-```powershell
-$env:CODEX_HOME = Join-Path $HOME '.codex-hub-work'
 codex
 ```
 
@@ -63,3 +56,13 @@ Claude inherits `.claude/settings.json`, including hooks and permissions. Only `
 OAuth auth files and session databases are not copied. With `--register-codex`, Codex stores the hub access key in its own credential cache, so T3 can recognize the profile as authenticated. The command removes `forced_login_method` and `forced_chatgpt_workspace_id` only from generated hub profiles; Royal authorized this exception for hub-key authentication. The original work config and administrator-enforced requirements stay intact. The work hub routes exclusively to its verified work account. Generated files use mode `0600`; on Windows, filesystem ACLs also determine access. Base files stay unchanged. Existing support files remain untouched on reruns. An incompatible profile config or T3 instance ID causes validation to fail before writes. Source config edits or key rotation can therefore require reconciliation of an existing profile before rerunning; the installer never overwrites those configs.
 
 For an approval process with a restricted PATH, pass `--codex-binary /absolute/path/to/codex.exe`. Verify that exact executable with `--version` before requesting approval. The installer fails before changing profiles if the executable is missing.
+
+## Unified T3 layout
+
+On the desktop and Mercury, T3 shows the hub instances as **Codex** (`codex_hub_personal`) and **Claude** (`claude_hub_personal`). The built-in `codex` and `claudeAgent` instances and `codex_hub_work` are turned off, not removed, and the default model points at the hub instance. Burnbutu keeps its direct logins on and labels the hub instances **Hub Codex** and **Hub Claude**.
+
+**Usage → Limits** reads pooled quotas from the usage source `burnbutu_hub` on the desktop and `burnbutu_personal` on burnbutu. Both use `https://burnbutu.royal-burbot.ts.net:8317` and the management key in `~/cliproxyapi/personal/management-key` on burnbutu. T3 moves an inline key into its secret store when it loads settings.
+
+## Windows file permissions
+
+Files that Codex created in the hub homes while running from a Harbor mesh session ended up with empty access lists on both Windows hosts. The T3 probe then failed with "failed to initialize sqlite state runtime" or "Access is denied". To fix it, reset every entry under the hub home to inherit the folder's permissions (`icacls <entry> /reset /T /C`), except `config.toml` and `settings.json`, which keep their owner-only access lists.

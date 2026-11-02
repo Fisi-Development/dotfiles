@@ -10,6 +10,10 @@ import sys
 import tempfile
 import tomllib
 
+# One hub pools every account, work included (Royal's choice, 2026-11-02).
+LANES = ('personal',)
+RETIRED_INSTANCES = ('codex_hub_work',)
+
 
 def statements(text):
     """Yield TOML statement spans, respecting strings, comments and containers."""
@@ -139,7 +143,7 @@ def main():
     home = args.home.expanduser().resolve()
     # Complete validation of every profile and T3 entry before any write.
     keys = {}
-    for lane in ('personal', 'work'):
+    for lane in LANES:
         keys[lane] = (home / '.config/cliproxy' / lane / 'access-key').read_text().strip()
         if not keys[lane] or any(c in keys[lane] for c in '\r\n'):
             raise ValueError('missing or invalid local hub access key')
@@ -152,14 +156,12 @@ def main():
     if args.register_codex and not codex_binary:
         raise ValueError('Codex executable is required for hub-key registration')
     instances = {}
-    for lane in ('personal', 'work'):
+    for lane in LANES:
         base = home / '.codex'
-        if lane == 'work' and (home / '.codex-work/config.toml').is_file():
-            base = home / '.codex-work'
         target = home / ('.codex-hub-' + lane)
         # Decode explicitly to preserve CRLF bytes, rather than universal newlines.
         source = (base / 'config.toml').read_bytes().decode('utf-8')
-        url = 'https://burnbutu.royal-burbot.ts.net:' + ('8317' if lane == 'personal' else '8318')
+        url = 'https://burnbutu.royal-burbot.ts.net:8317'
         original_data = codex_config(source, url, keys[lane])
         data = codex_config(without_login_restrictions(source) if args.register_codex else source,
                             url, keys[lane])
@@ -235,6 +237,9 @@ def main():
                     existing['displayName'] = desired['displayName']
             else:
                 current[name] = desired
+        for name in RETIRED_INSTANCES:
+            if name in current:
+                current[name]['enabled'] = False
         if t3 != json.loads(original):
             merged = encoded(t3)
     for target, name, data, base, extras in plans:
@@ -263,7 +268,7 @@ def main():
             except OSError:
                 print('Skipped unreadable support path: ' + str(src), file=sys.stderr)
     if args.register_codex:
-        for lane in ('personal', 'work'):
+        for lane in LANES:
             result = subprocess.run(
                 [codex_binary, 'login', '--with-api-key'],
                 input=keys[lane] + '\n', text=True, capture_output=True, timeout=30,
