@@ -14,13 +14,13 @@ The parent rollout provisions keys locally over the authenticated Harbor mesh on
 Run with Python 3.11 or later:
 
 ```sh
-python3 ~/.local/bin/subscription-hub-profiles.py
+python3 ~/.agents/bin/subscription-hub-profiles.py
 ```
 
 `--home PATH` selects a different home, including a temporary test home. Without `--t3-settings PATH`, the installer creates only profiles. To stage T3 instances, pass the actual server settings JSON path:
 
 ```sh
-python3 ~/.local/bin/subscription-hub-profiles.py --t3-settings /absolute/path/to/server-settings.json
+python3 ~/.agents/bin/subscription-hub-profiles.py --t3-settings /absolute/path/to/server-settings.json
 ```
 
 Once OAuth works, repeat with `--enable-codex` to enable only `codex_hub_personal` and `codex_hub_work`. Omitting this flag stages both as disabled again. `claude_hub_personal` always stays disabled. Existing default selections, other instances, and settings are preserved. Each settings change creates a unique sibling backup before an atomic replacement; no database is changed.
