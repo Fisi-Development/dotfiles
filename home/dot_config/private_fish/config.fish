@@ -282,3 +282,7 @@ function hermes
   end
   command hermes $argv
 end
+
+if test (uname) = Darwin; and test -d "/Library/Application Support/Harbor/purser"
+    fish_add_path --append --move --path "/Library/Application Support/Harbor/purser"
+end
