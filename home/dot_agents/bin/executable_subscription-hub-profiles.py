@@ -13,6 +13,48 @@ import tomllib
 # One hub pools every account, work included (Royal's choice, 2026-11-02).
 LANES = ('personal',)
 RETIRED_INSTANCES = ('codex_hub_work',)
+# Support directories a hub home links to rather than copies, so skills that
+# installers add to ~/.claude/skills later show up in the hub profile too.
+# Codex needs none: it reads ~/.agents/skills whatever CODEX_HOME is.
+CLAUDE_LINKS = ('skills',)
+
+
+def is_link(path):
+    isjunction = getattr(os.path, 'isjunction', None)
+    return path.is_symlink() or bool(isjunction and isjunction(path))
+
+
+def links_to(dest, src):
+    try:
+        return os.path.samefile(dest, src)
+    except OSError:
+        return False
+
+
+def check_links(target, base, names):
+    """Fail before any write when a hub support link points somewhere else."""
+    for name in names:
+        dest = target / name
+        if is_link(dest) and not links_to(dest, base / name):
+            raise ValueError('support link points outside its base: ' + str(dest))
+
+
+def ensure_links(target, base, names):
+    for name in names:
+        src, dest = base / name, target / name
+        if not src.is_dir() or is_link(dest):
+            continue
+        if dest.is_dir() and not any(dest.iterdir()):
+            dest.rmdir()
+        elif dest.exists():
+            print('Kept existing support directory, not a link: ' + str(dest), file=sys.stderr)
+            continue
+        if os.name == 'nt':
+            # A junction needs neither Developer Mode nor elevation.
+            import _winapi
+            _winapi.CreateJunction(str(src), str(dest))
+        else:
+            os.symlink(src, dest, target_is_directory=True)
 
 
 def statements(text):
@@ -139,8 +181,19 @@ def main():
     parser.add_argument('--codex-binary', type=Path, help='Absolute Codex executable for restricted PATHs')
     parser.add_argument('--register-codex', action='store_true',
                         help='Use hub-key auth in hub homes and register keys with Codex')
+    parser.add_argument('--support-only', action='store_true',
+                        help='Only add missing support links to existing hub homes')
     args = parser.parse_args()
     home = args.home.expanduser().resolve()
+    links = [(home / '.claude-hub-personal', home / '.claude', CLAUDE_LINKS)]
+    if args.support_only:
+        present = [link for link in links if link[0].is_dir() and not is_link(link[0])]
+        for link in present:
+            check_links(*link)
+        for link in present:
+            ensure_links(*link)
+        print('Hub support links verified in ' + str(len(present)) + ' existing home(s).')
+        return
     # Complete validation of every profile and T3 entry before any write.
     keys = {}
     for lane in LANES:
@@ -215,6 +268,8 @@ def main():
             dest = target / extra
             if dest.is_symlink():
                 raise ValueError('refusing symlink profile support path')
+    for link in links:
+        check_links(*link)
     t3path = args.t3_settings.expanduser().resolve() if args.t3_settings else None
     original = merged = None
     if t3path:
@@ -267,6 +322,8 @@ def main():
                     atomic(dest, src.read_bytes())
             except OSError:
                 print('Skipped unreadable support path: ' + str(src), file=sys.stderr)
+    for link in links:
+        ensure_links(*link)
     if args.register_codex:
         for lane in LANES:
             result = subprocess.run(
