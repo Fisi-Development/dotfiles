@@ -16,7 +16,7 @@ class RolloutSourcesTests(unittest.TestCase):
         instructions = (ROOT / 'AGENTS.md').read_text(encoding='utf-8')
         step = instructions.split('3. **Apply on the Mac.**', 1)[1].split('\n4. ', 1)[0]
         self.assertIn('`claude@harbor@bouncehouse`', step)
-        self.assertIn('work in `~/.local/share/chezmoi`', step)
+        self.assertIn('working in `~/.local/share/chezmoi`', step)
 
     @unittest.skipUnless(BASH and pathlib.Path(BASH).exists(), 'Bash unavailable')
     def test_noninteractive_cargo_path_is_idempotent_and_preserves_path(self):
