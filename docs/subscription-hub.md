@@ -61,7 +61,7 @@ For an approval process with a restricted PATH, pass `--codex-binary /absolute/p
 
 On the desktop and Mercury, T3 shows the hub instances as **Codex** (`codex_hub_personal`) and **Claude** (`claude_hub_personal`). The built-in `codex` and `claudeAgent` instances and `codex_hub_work` are turned off, not removed, and the default model points at the hub instance. Burnbutu keeps its direct logins on and labels the hub instances **Hub Codex** and **Hub Claude**.
 
-**Usage → Limits** reads pooled quotas from the usage source `burnbutu_hub` on the desktop and `burnbutu_personal` on burnbutu. Both use `https://burnbutu.royal-burbot.ts.net:8317` and the management key in `~/cliproxyapi/personal/management-key` on burnbutu. T3 moves an inline key into its secret store when it loads settings.
+**Usage → Limits** reads pooled quotas from the usage source `burnbutu_hub` on the desktop, Mercury and bouncehouse, and `burnbutu_personal` on burnbutu. Both use `https://burnbutu.royal-burbot.ts.net:8317` and the management key in `~/cliproxyapi/personal/management-key` on burnbutu. T3 moves an inline key into its secret store when it loads settings.
 
 ## Windows file permissions
 
