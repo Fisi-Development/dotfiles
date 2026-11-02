@@ -132,6 +132,7 @@ def main():
     parser.add_argument('--t3-settings', type=Path)
     parser.add_argument('--enable-codex', action='store_true')
     parser.add_argument('--enable-claude', action='store_true')
+    parser.add_argument('--codex-binary', type=Path, help='Absolute Codex executable for restricted PATHs')
     parser.add_argument('--register-codex', action='store_true',
                         help='Use hub-key auth in hub homes and register keys with Codex')
     args = parser.parse_args()
@@ -144,7 +145,10 @@ def main():
             raise ValueError('missing or invalid local hub access key')
     plans = []
     migrations = {}
-    codex_binary = shutil.which('codex') if args.register_codex else None
+    codex_binary = (str(args.codex_binary.expanduser().resolve()) if args.codex_binary
+                    else shutil.which('codex')) if args.register_codex else None
+    if args.codex_binary and not args.codex_binary.expanduser().is_file():
+        raise ValueError('Explicit Codex executable does not exist')
     if args.register_codex and not codex_binary:
         raise ValueError('Codex executable is required for hub-key registration')
     instances = {}
