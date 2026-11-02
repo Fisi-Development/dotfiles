@@ -4,6 +4,12 @@ if [ -d "$HOME/.cargo/bin" ]; then
         *) PATH="$HOME/.cargo/bin${PATH:+:$PATH}" ;;
     esac
 fi
+if [[ $(uname) == Darwin && -d "/Library/Application Support/Harbor/purser" ]]; then
+    case ":$PATH:" in
+        *":/Library/Application Support/Harbor/purser:"*) ;;
+        *) PATH="${PATH:+$PATH:}/Library/Application Support/Harbor/purser" ;;
+    esac
+fi
 export PATH
 
 # Agent harnesses write bash. With fish as the login shell, Claude Code and
