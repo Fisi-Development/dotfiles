@@ -23,7 +23,7 @@ python3 ~/.agents/bin/subscription-hub-profiles.py
 python3 ~/.agents/bin/subscription-hub-profiles.py --t3-settings /absolute/path/to/server-settings.json
 ```
 
-Once OAuth works, repeat with `--enable-codex` to enable only `codex_hub_personal` and `codex_hub_work`. Omitting this flag stages both as disabled again. `claude_hub_personal` always stays disabled. Existing default selections, other instances, and settings are preserved. Each settings change creates a unique sibling backup before an atomic replacement; no database is changed.
+Once OAuth works, repeat with `--register-codex --enable-codex` to enable only `codex_hub_personal` and `codex_hub_work`. Omitting this flag stages both as disabled again. `claude_hub_personal` always stays disabled. Existing default selections, other instances, and settings are preserved. Each settings change creates a unique sibling backup before an atomic replacement; no database is changed.
 
 ## Launch a separate profile
 
@@ -60,4 +60,4 @@ Codex profiles inherit `.codex/config.toml`; the work profile uses `.codex-work/
 
 Claude inherits `.claude/settings.json`, including hooks and permissions. Only `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` in `env` are replaced, and `ANTHROPIC_API_KEY` is removed from this profile to prevent conflicting API billing. `CLAUDE.md` and `rules` are bootstrapped when present.
 
-Auth files and session databases are not copied. Generated files use mode `0600`; on Windows, filesystem ACLs also determine access. Base files stay unchanged. Existing support files remain untouched on reruns. An incompatible profile config or T3 instance ID causes validation to fail before writes. Source config edits or key rotation can therefore require reconciliation of an existing profile before rerunning; the installer never overwrites those configs.
+OAuth auth files and session databases are not copied. With `--register-codex`, Codex stores the hub access key in its own credential cache, so T3 can recognize the profile as authenticated. The command removes `forced_login_method` and `forced_chatgpt_workspace_id` only from generated hub profiles; Royal authorized this exception for hub-key authentication. The original work config and administrator-enforced requirements stay intact. The work hub routes exclusively to its verified work account. Generated files use mode `0600`; on Windows, filesystem ACLs also determine access. Base files stay unchanged. Existing support files remain untouched on reruns. An incompatible profile config or T3 instance ID causes validation to fail before writes. Source config edits or key rotation can therefore require reconciliation of an existing profile before rerunning; the installer never overwrites those configs.

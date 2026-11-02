@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -42,6 +43,21 @@ def statements(text):
         i += 1
     if start < len(text):
         yield start, len(text)
+
+
+def without_login_restrictions(source):
+    spans = []
+    for start, end in statements(source):
+        statement = source[start:end].lstrip()
+        if statement.startswith('['):
+            break
+        if statement and not statement.startswith('#'):
+            item = tomllib.loads(statement)
+            if any(k in item for k in ('forced_login_method', 'forced_chatgpt_workspace_id')):
+                spans.append((start, end))
+    for start, end in reversed(spans):
+        source = source[:start] + source[end:]
+    return source
 
 
 def codex_config(source, url, key):
@@ -115,6 +131,8 @@ def main():
     parser.add_argument('--home', type=Path, default=Path.home())
     parser.add_argument('--t3-settings', type=Path)
     parser.add_argument('--enable-codex', action='store_true')
+    parser.add_argument('--register-codex', action='store_true',
+                        help='Use hub-key auth in hub homes and register keys with Codex')
     args = parser.parse_args()
     home = args.home.expanduser().resolve()
     # Complete validation of every profile and T3 entry before any write.
@@ -124,6 +142,10 @@ def main():
         if not keys[lane] or any(c in keys[lane] for c in '\r\n'):
             raise ValueError('missing or invalid local hub access key')
     plans = []
+    migrations = {}
+    codex_binary = shutil.which('codex') if args.register_codex else None
+    if args.register_codex and not codex_binary:
+        raise ValueError('Codex executable is required for hub-key registration')
     instances = {}
     for lane in ('personal', 'work'):
         base = home / '.codex'
@@ -133,7 +155,11 @@ def main():
         # Decode explicitly to preserve CRLF bytes, rather than universal newlines.
         source = (base / 'config.toml').read_bytes().decode('utf-8')
         url = 'https://burnbutu.royal-burbot.ts.net:' + ('8317' if lane == 'personal' else '8318')
-        data = codex_config(source, url, keys[lane])
+        original_data = codex_config(source, url, keys[lane])
+        data = codex_config(without_login_restrictions(source) if args.register_codex else source,
+                            url, keys[lane])
+        if args.register_codex and data != original_data:
+            migrations[target / 'config.toml'] = original_data
         plans.append((target, 'config.toml', data, base, ('AGENTS.md', 'rules', 'skills', 'hooks.json')))
         instances['codex_hub_' + lane] = dict(driver='codex', displayName='Hub ' + lane.title(),
             enabled=args.enable_codex, config=dict(homePath=str(target), setupMode='existing'))
@@ -151,7 +177,8 @@ def main():
         config = target / name
         if config.is_symlink() or target.is_symlink():
             raise ValueError('refusing symlink profile/config')
-        if config.exists() and config.read_bytes() != data:
+        if (config.exists() and config.read_bytes() != data
+                and config.read_bytes() != migrations.get(config)):
             raise ValueError('incompatible existing profile config: ' + str(config))
         for extra in extras:
             dest = target / extra
@@ -176,8 +203,14 @@ def main():
             merged = encoded(t3)
     for target, name, data, base, extras in plans:
         target.mkdir(parents=True, exist_ok=True, mode=0o700)
-        if not (target / name).exists():
-            atomic(target / name, data)
+        config = target / name
+        if config.exists() and config in migrations and config.read_bytes() != data:
+            fd, backup = tempfile.mkstemp(prefix='config.toml.before-hub-key-', dir=target)
+            with os.fdopen(fd, 'wb') as stream:
+                stream.write(config.read_bytes())
+            atomic(config, data)
+        elif not config.exists():
+            atomic(config, data)
         os.chmod(target / name, 0o600)
         for extra in extras:
             src, dest = base / extra, target / extra
@@ -186,6 +219,14 @@ def main():
                     shutil.copytree(src, dest)
                 else:
                     atomic(dest, src.read_bytes())
+    if args.register_codex:
+        for lane in ('personal', 'work'):
+            result = subprocess.run(
+                [codex_binary, 'login', '--with-api-key'],
+                input=keys[lane] + '\n', text=True, capture_output=True, timeout=30,
+                env=dict(os.environ, CODEX_HOME=str(home / ('.codex-hub-' + lane))))
+            if result.returncode:
+                raise ValueError('Codex rejected the hub access key')
     if merged is not None:
         fd, backup = tempfile.mkstemp(prefix=t3path.name + '.backup-', dir=t3path.parent)
         with os.fdopen(fd, 'wb') as stream:
