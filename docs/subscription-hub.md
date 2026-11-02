@@ -1,6 +1,6 @@
 # Set up subscription hub profiles
 
-The installer creates separate client homes for the personal and work hubs without changing default clients or T3 selections. Profiles are staged until hub OAuth works. Claude subscriptions must use Claude Code; the Claude T3 instance remains disabled.
+The installer creates separate client homes for the personal and work hubs without changing default clients or T3 selections. Profiles are staged until hub OAuth works. Claude subscriptions must use Claude Code; the Claude T3 instance stays disabled until its live Claude Code check passes.
 
 The personal hub is `https://burnbutu.royal-burbot.ts.net:8317`; the work hub uses port `8318`. Each lane has its own account and key. Royal accepted the proxy suspension risk for this setup.
 
@@ -23,7 +23,7 @@ python3 ~/.agents/bin/subscription-hub-profiles.py
 python3 ~/.agents/bin/subscription-hub-profiles.py --t3-settings /absolute/path/to/server-settings.json
 ```
 
-Once OAuth works, repeat with `--register-codex --enable-codex` to enable only `codex_hub_personal` and `codex_hub_work`. Omitting this flag stages both as disabled again. `claude_hub_personal` always stays disabled. Existing default selections, other instances, and settings are preserved. Each settings change creates a unique sibling backup before an atomic replacement; no database is changed.
+Once OAuth works, repeat with `--register-codex --enable-codex` to enable only `codex_hub_personal` and `codex_hub_work`. Omitting this flag stages both as disabled again. Add `--enable-claude` after the Claude subscription is connected and a real request through Claude Code passes. Omit it to stage Claude as disabled. Existing default selections, other instances, and settings are preserved. Each settings change creates a unique sibling backup before an atomic replacement; no database is changed.
 
 ## Launch a separate profile
 

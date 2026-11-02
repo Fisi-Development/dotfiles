@@ -131,6 +131,7 @@ def main():
     parser.add_argument('--home', type=Path, default=Path.home())
     parser.add_argument('--t3-settings', type=Path)
     parser.add_argument('--enable-codex', action='store_true')
+    parser.add_argument('--enable-claude', action='store_true')
     parser.add_argument('--register-codex', action='store_true',
                         help='Use hub-key auth in hub homes and register keys with Codex')
     args = parser.parse_args()
@@ -171,8 +172,8 @@ def main():
     env['ANTHROPIC_AUTH_TOKEN'] = keys['personal']
     env.pop('ANTHROPIC_API_KEY', None)
     plans.append((target, 'settings.json', encoded(settings), base, ('CLAUDE.md', 'rules')))
-    instances['claude_hub_personal'] = dict(driver='claudeAgent', displayName='Hub Personal (staged)',
-                                           enabled=False, config=dict(homePath=str(target)))
+    instances['claude_hub_personal'] = dict(driver='claudeAgent', displayName='Hub Claude',
+                                           enabled=args.enable_claude, config=dict(homePath=str(target)))
     for target, name, data, base, extras in plans:
         config = target / name
         if config.is_symlink() or target.is_symlink():
@@ -197,6 +198,8 @@ def main():
                     raise ValueError('incompatible T3 instance: ' + name)
                 # Retain user metadata; only our enabled flags are managed.
                 existing['enabled'] = desired['enabled']
+                if existing.get('displayName') == 'Hub Personal (staged)':
+                    existing['displayName'] = desired['displayName']
             else:
                 current[name] = desired
         if t3 != json.loads(original):
