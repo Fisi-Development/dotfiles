@@ -33,7 +33,7 @@ kind = "subscription"
 [wallets.company-litellm]             # company gateway verified 2026-10-05; review grant only
 kind = "metered"
 
-# GPT: CLI through codex exec, work login first, then personal. Native in Codex and OpenCode.
+# GPT: CLI through codex exec, work login first, then personal. Native in Codex.
 # No OpenRouter or other metered GPT route.
 [[routes]]
 family = "gpt"
@@ -53,12 +53,8 @@ via = "native"
 harness = "codex"
 wallet = "chatgpt-work"              # native children bill whichever login the parent Codex runs on
 
-[[routes]]
-family = "gpt"
-via = "native"
-harness = "opencode"
-provider = "openai"
-wallet = "chatgpt"
+# OpenCode's OpenAI provider is retired (Royal, 2026-11-02): its children failed with 401
+# while interactive login worked. GPT work runs through Codex.
 
 # Claude: only through Claude Code itself, as a native child or `claude -p`.
 [[routes]]
