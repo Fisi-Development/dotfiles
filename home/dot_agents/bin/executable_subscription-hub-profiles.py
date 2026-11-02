@@ -8,15 +8,19 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 
 # One hub pools every account, work included (Royal's choice, 2026-11-02).
 LANES = ('personal',)
 RETIRED_INSTANCES = ('codex_hub_work',)
-# Support directories a hub home links to rather than copies, so skills that
-# installers add to ~/.claude/skills later show up in the hub profile too.
-# Codex needs none: it reads ~/.agents/skills whatever CODEX_HOME is.
-CLAUDE_LINKS = ('skills',)
+# Support paths a hub home links to rather than copies, so later changes in
+# the base home (new skills, chezmoi updates to AGENTS.md, CLAUDE.md, rules
+# and hooks, hook scripts settings.json reaches through the config dir) reach
+# hub sessions too. Codex keeps its own skills copy, because it writes its
+# .system skills there and reads ~/.agents/skills whatever CODEX_HOME is.
+CLAUDE_LINKS = ('CLAUDE.md', 'skills', 'rules', 'hooks', 'agents', 'commands', 'output-styles')
+CODEX_LINKS = ('AGENTS.md', 'rules', 'hooks.json')
 
 
 def is_link(path):
@@ -35,26 +39,49 @@ def check_links(target, base, names):
     """Fail before any write when a hub support link points somewhere else."""
     for name in names:
         dest = target / name
-        if is_link(dest) and not links_to(dest, base / name):
+        if is_link(dest) and (base / name).exists() and not links_to(dest, base / name):
             raise ValueError('support link points outside its base: ' + str(dest))
+
+
+def set_aside(dest):
+    """Keep an older run's copy beside the link rather than delete it."""
+    backup = dest.with_name(dest.name + '.before-link-' + time.strftime('%Y%m%dT%H%M%S'))
+    dest.rename(backup)
+    print('Moved copied support path aside: ' + str(backup), file=sys.stderr)
 
 
 def ensure_links(target, base, names):
     for name in names:
         src, dest = base / name, target / name
-        if not src.is_dir() or is_link(dest):
+        if not src.exists() or is_link(dest):
             continue
-        if dest.is_dir() and not any(dest.iterdir()):
-            dest.rmdir()
-        elif dest.exists():
-            print('Kept existing support directory, not a link: ' + str(dest), file=sys.stderr)
+        if src.is_dir():
+            if dest.is_dir() and not any(dest.iterdir()):
+                dest.rmdir()
+            elif dest.exists():
+                set_aside(dest)
+            if os.name == 'nt':
+                # A junction needs neither Developer Mode nor elevation.
+                import _winapi
+                _winapi.CreateJunction(str(src), str(dest))
+            else:
+                os.symlink(src, dest, target_is_directory=True)
             continue
-        if os.name == 'nt':
-            # A junction needs neither Developer Mode nor elevation.
-            import _winapi
-            _winapi.CreateJunction(str(src), str(dest))
-        else:
-            os.symlink(src, dest, target_is_directory=True)
+        # Link files beside the target first, so a host that cannot make file
+        # symlinks (Windows without Developer Mode) keeps its working copy.
+        temporary = dest.with_name('.' + name + '.link')
+        if is_link(temporary) or temporary.exists():
+            temporary.unlink()
+        try:
+            os.symlink(src, temporary)
+        except OSError:
+            print('Kept a copy, file symlinks unavailable: ' + str(dest), file=sys.stderr)
+            if not dest.exists():
+                atomic(dest, src.read_bytes())
+            continue
+        if dest.exists() and dest.read_bytes() != src.read_bytes():
+            set_aside(dest)
+        os.replace(temporary, dest)
 
 
 def statements(text):
@@ -186,6 +213,7 @@ def main():
     args = parser.parse_args()
     home = args.home.expanduser().resolve()
     links = [(home / '.claude-hub-personal', home / '.claude', CLAUDE_LINKS)]
+    links += [(home / ('.codex-hub-' + lane), home / '.codex', CODEX_LINKS) for lane in LANES]
     if args.support_only:
         present = [link for link in links if link[0].is_dir() and not is_link(link[0])]
         for link in present:
@@ -234,7 +262,7 @@ def main():
             migrations[existing_config] = existing_data
         elif args.register_codex and data != original_data:
             migrations[existing_config] = original_data
-        plans.append((target, 'config.toml', data, base, ('AGENTS.md', 'rules', 'skills', 'hooks.json')))
+        plans.append((target, 'config.toml', data, base, ('skills',)))
         instances['codex_hub_' + lane] = dict(driver='codex', displayName='Hub ' + lane.title(),
             enabled=args.enable_codex, config=dict(homePath=str(target), setupMode='existing'))
     base = home / '.claude'
@@ -254,7 +282,7 @@ def main():
         claude_data = claude_config.read_bytes()
     else:
         claude_data = encoded(settings)
-    plans.append((target, 'settings.json', claude_data, base, ('CLAUDE.md', 'rules')))
+    plans.append((target, 'settings.json', claude_data, base, ()))
     instances['claude_hub_personal'] = dict(driver='claudeAgent', displayName='Hub Claude',
                                            enabled=args.enable_claude, config=dict(homePath=str(target)))
     for target, name, data, base, extras in plans:
