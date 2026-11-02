@@ -250,11 +250,18 @@ def main():
         os.chmod(target / name, 0o600)
         for extra in extras:
             src, dest = base / extra, target / extra
-            if src.exists() and not dest.exists():
+            if dest.exists():
+                continue
+            try:
+                # Windows can refuse to traverse a linked source (WinError 448).
+                if not src.exists():
+                    continue
                 if src.is_dir():
                     shutil.copytree(src, dest)
                 else:
                     atomic(dest, src.read_bytes())
+            except OSError:
+                print('Skipped unreadable support path: ' + str(src), file=sys.stderr)
     if args.register_codex:
         for lane in ('personal', 'work'):
             result = subprocess.run(
