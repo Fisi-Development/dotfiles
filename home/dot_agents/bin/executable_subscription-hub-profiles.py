@@ -159,8 +159,22 @@ def main():
         original_data = codex_config(source, url, keys[lane])
         data = codex_config(without_login_restrictions(source) if args.register_codex else source,
                             url, keys[lane])
-        if args.register_codex and data != original_data:
-            migrations[target / 'config.toml'] = original_data
+        existing_config = target / 'config.toml'
+        if args.register_codex and existing_config.is_file():
+            existing_data = existing_config.read_bytes()
+            existing_text = existing_data.decode('utf-8')
+            existing = tomllib.loads(existing_text)
+            provider = existing.get('model_providers', {}).get('subscription_hub', {})
+            if (existing.get('model_provider') != 'subscription_hub'
+                    or provider.get('base_url') != url + '/v1'
+                    or provider.get('experimental_bearer_token') != keys[lane]
+                    or provider.get('wire_api') != 'responses'
+                    or provider.get('requires_openai_auth') is not False):
+                raise ValueError('existing profile does not match this hub lane')
+            data = without_login_restrictions(existing_text).encode('utf-8')
+            migrations[existing_config] = existing_data
+        elif args.register_codex and data != original_data:
+            migrations[existing_config] = original_data
         plans.append((target, 'config.toml', data, base, ('AGENTS.md', 'rules', 'skills', 'hooks.json')))
         instances['codex_hub_' + lane] = dict(driver='codex', displayName='Hub ' + lane.title(),
             enabled=args.enable_codex, config=dict(homePath=str(target), setupMode='existing'))
@@ -171,7 +185,17 @@ def main():
     env['ANTHROPIC_BASE_URL'] = 'https://burnbutu.royal-burbot.ts.net:8317'
     env['ANTHROPIC_AUTH_TOKEN'] = keys['personal']
     env.pop('ANTHROPIC_API_KEY', None)
-    plans.append((target, 'settings.json', encoded(settings), base, ('CLAUDE.md', 'rules')))
+    claude_config = target / 'settings.json'
+    if args.register_codex and claude_config.is_file():
+        existing_claude = json.loads(claude_config.read_bytes())
+        existing_env = existing_claude.get('env', {})
+        if (existing_env.get('ANTHROPIC_BASE_URL') != env['ANTHROPIC_BASE_URL']
+                or existing_env.get('ANTHROPIC_AUTH_TOKEN') != keys['personal']):
+            raise ValueError('existing Claude profile does not match this hub lane')
+        claude_data = claude_config.read_bytes()
+    else:
+        claude_data = encoded(settings)
+    plans.append((target, 'settings.json', claude_data, base, ('CLAUDE.md', 'rules')))
     instances['claude_hub_personal'] = dict(driver='claudeAgent', displayName='Hub Claude',
                                            enabled=args.enable_claude, config=dict(homePath=str(target)))
     for target, name, data, base, extras in plans:
@@ -194,7 +218,12 @@ def main():
         for name, desired in instances.items():
             if name in current:
                 existing = current[name]
-                if (existing.get('driver') != desired['driver'] or existing.get('config') != desired['config']):
+                existing_config = existing.get('config', {})
+                expected_home = Path(desired['config']['homePath']).resolve()
+                if (existing.get('driver') != desired['driver']
+                        or not isinstance(existing_config, dict)
+                        or Path(existing_config.get('homePath', '')).expanduser().resolve() != expected_home
+                        or existing_config.get('setupMode', 'existing') != 'existing'):
                     raise ValueError('incompatible T3 instance: ' + name)
                 # Retain user metadata; only our enabled flags are managed.
                 existing['enabled'] = desired['enabled']
@@ -243,5 +272,6 @@ if __name__ == '__main__':
         main()
     except (OSError, ValueError, TypeError, KeyError) as error:
         # Parser errors may contain input values, so never print their text.
-        print('Hub profile setup failed (' + type(error).__name__ + '); check local inputs and conflicts.', file=sys.stderr)
+        detail = str(error) if type(error) is ValueError else type(error).__name__
+        print('Hub profile setup failed: ' + detail, file=sys.stderr)
         sys.exit(1)
