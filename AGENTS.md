@@ -19,7 +19,7 @@ Codex and OpenCode entry points are symlink templates. Preserve the links when a
 
 The authorization installer writes `~/.agents/authorization-policy.md`, a home-relative path, into both snapshots, so they are identical on every host. Keep it home-relative: an absolute path makes the other host's apply show drift.
 
-`home/dot_codex/create_config.toml` seeds a fresh host only. Codex rewrites its config constantly (runtime paths, hook hashes, the installer's `auto_review` block), so chezmoi never overwrites or diffs an existing one. Refresh the seed with `chezmoi add` on the `create_` source when a fresh host should start from newer settings.
+`home/dot_codex/create_private_config.toml` seeds a fresh host only, with mode 0600 (`private_`), the mode Codex keeps it at because it can hold credentials; without `private_`, `chezmoi status` reports the live 0600 file as drift and an apply would loosen it to 0664. Codex rewrites its config constantly (runtime paths, hook hashes, the installer's `auto_review` block), so chezmoi never overwrites or diffs an existing one. Refresh the seed with `chezmoi add` on the `create_` source when a fresh host should start from newer settings.
 
 ## Shell config portability
 
