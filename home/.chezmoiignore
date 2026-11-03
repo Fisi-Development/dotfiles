@@ -99,4 +99,8 @@ AppData/Local/pnpm
 # sweeps stale entries in ~/.cache/harbor-build/tmp (docs/runbooks/janitor.md).
 .config/go
 .cache/harbor-build
+# Linux login shells: ~/.profile is Ubuntu's stock profile plus ~/.cargo/env,
+# and ~/.local/bin/python links python3, so `bash -lc` finds cargo and python.
+.profile
+.local/bin/python
 {{ end }}
