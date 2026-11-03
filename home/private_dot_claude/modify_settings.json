@@ -183,8 +183,12 @@
   model-swap, supervise-run, bosun-loop and others) to name-only, so they
   stopped triggering. These stay listed by name; a skill named here that a host
   does not install costs nothing. A value Royal set by hand is kept.
+  2026-11-02 (skill-doctor Review 4): the $awsOff names loaded in no Mac session
+  in 30 days, so Royal turned them off; "off" replaces the name-only this
+  template wrote earlier, and any other value is still kept.
 */ -}}
-{{- $awsNames := list "amazon-bedrock" "aws-ai-ml" "aws-auth" "aws-billing-and-cost-management" "aws-blocks" "aws-cdk" "aws-cloudformation" "aws-compute" "aws-containers" "aws-database" "aws-deployment" "aws-iam" "aws-messaging-and-streaming" "aws-networking" "aws-observability" "aws-sdk-js-v3-usage" "aws-sdk-python-usage" "aws-sdk-swift-usage" "aws-security" "aws-serverless" "aws-storage" "aws-well-architected-review" "launch-with-aws" -}}
+{{- $awsNames := list "aws-billing-and-cost-management" "aws-cloudformation" "aws-compute" "aws-iam" "aws-networking" "aws-observability" "aws-sdk-python-usage" "aws-storage" -}}
+{{- $awsOff := list "amazon-bedrock" "aws-ai-ml" "aws-auth" "aws-blocks" "aws-cdk" "aws-containers" "aws-database" "aws-deployment" "aws-messaging-and-streaming" "aws-sdk-js-v3-usage" "aws-sdk-swift-usage" "aws-security" "aws-serverless" "aws-well-architected-review" "launch-with-aws" -}}
 {{- $overrides := dict -}}
 {{- if hasKey $settings "skillOverrides" -}}
 {{-   $overrides = index $settings "skillOverrides" -}}
@@ -192,6 +196,11 @@
 {{- range $awsNames -}}
 {{-   if not (hasKey $overrides .) -}}
 {{-     $_ := set $overrides . "name-only" -}}
+{{-   end -}}
+{{- end -}}
+{{- range $awsOff -}}
+{{-   if or (not (hasKey $overrides .)) (eq (index $overrides .) "name-only") -}}
+{{-     $_ := set $overrides . "off" -}}
 {{-   end -}}
 {{- end -}}
 {{- $_ := set $settings "skillOverrides" $overrides -}}
