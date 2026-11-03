@@ -1,7 +1,7 @@
 """Pin top-level Codex settings in ~/.codex*/config.toml on this host.
 
 chezmoi runs this after every apply (run_after_codex-settings.*). Codex owns
-config.toml and chezmoi only seeds it (create_config.toml), so a setting that
+config.toml and chezmoi only seeds it (create_private_config.toml), so a setting that
 must reach existing hosts is patched here instead. It is idempotent and touches
 only the keys in SETTINGS, leaving the rest of the file byte for byte.
 
