@@ -4,6 +4,15 @@ if [ -d "$HOME/.cargo/bin" ]; then
         *) PATH="$HOME/.cargo/bin${PATH:+:$PATH}" ;;
     esac
 fi
+# Royal's own CLIs (telepathica, lore, agent-traces). .zprofile resets PATH from
+# /etc/profile and re-sources this file, so a `zsh -lc` command (Codex, T3) only
+# finds them when they are added here, not just in the interactive .zshrc.
+if [ -d "$HOME/.local/bin" ]; then
+    case ":$PATH:" in
+        *":$HOME/.local/bin:"*) ;;
+        *) PATH="$HOME/.local/bin${PATH:+:$PATH}" ;;
+    esac
+fi
 if [[ $(uname) == Darwin && -d "/Library/Application Support/Harbor/purser" ]]; then
     case ":$PATH:" in
         *":/Library/Application Support/Harbor/purser:"*) ;;
