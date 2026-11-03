@@ -33,10 +33,16 @@ Shared agent entry points reference the canonical file.
 
 The installer writes `t3_runtime_modes` from the agent-guard current check into
 `~/.telepathica/config.json`, or `~/.agent-mailbox/config.json` when only that
-file exists. Only harnesses agent-guard hooks follow the check: Claude, and
-OpenCode where `~/.config/opencode/plugins/agent-guard.ts` exists (OpenCode is
-set to `auto` without it). It leaves the Codex entry as it is. It prints only that map
-from the config and keeps no backup copy of that file, which holds the hub
+file exists. Only harnesses agent-guard hooks follow the check: Claude, Codex
+where `~/.codex/hooks.json` runs the guard, and OpenCode where
+`~/.config/opencode/plugins/agent-guard.ts` exists (each is set to `auto`
+without its hook). OpenCode needs only an installed guard whose `--version`
+reads, not a current one: T3 runs OpenCode in any mode below `full-access` by
+asking before every bash, edit and webfetch call, since OpenCode has no auto
+reviewer, so a stale or missing updater record turned GLM review children into
+hand-approval sessions (Royal, 3 Nov 2026). The preview prints that mode as
+`opencode_launch_mode` beside `launch_mode`. From the config it prints only
+that map and keeps no backup copy of that file, which holds the hub
 token. `--guard-bin` and `--updater-state` are refused for the real home. An astropath from
 Telepathica agent-mailbox#146 on re-reads the map each scan; an older one
 needs a restart.

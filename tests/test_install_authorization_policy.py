@@ -103,9 +103,35 @@ class InstallerTests(unittest.TestCase):
         self.write('.config/opencode/plugins/agent-guard.ts', '// synthetic plugin\n')
         self.run_installer('--apply')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['opencode'], 'full-access')
+        # OpenCode in auto asks before every call, so an installed but outdated guard
+        # keeps it at full access while Claude and Codex drop to auto.
         self.updater('0.4.2', result='failed', reason='artifact_expired')
+        summary = self.run_installer('--apply')
+        self.assertEqual((summary['launch_mode'], summary['opencode_launch_mode']), ('auto', 'full-access'))
+        modes = json.loads(path.read_bytes())['t3_runtime_modes']
+        self.assertEqual((modes['claude'], modes['opencode']), ('auto', 'full-access'))
+        # No updater at all (burnbutu before its root updater): still guarded.
+        self.state.unlink()
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['opencode'], 'full-access')
+        # Without the plugin, OpenCode's calls are not gated.
+        (self.home / '.config/opencode/plugins/agent-guard.ts').unlink()
         self.run_installer('--apply')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['opencode'], 'auto')
+
+    def test_opencode_without_a_readable_guard_is_auto(self):
+        path = self.config()
+        self.write('.config/opencode/plugins/agent-guard.ts', '// synthetic plugin\n')
+        for name, text in (('missing', None), ('unreadable version', 'not agent-guard 9.9.9 really')):
+            with self.subTest(case=name):
+                if text is None:
+                    self.guard.unlink(missing_ok=True)
+                else:
+                    self.guard.write_text('@echo ' + text + '\n' if os.name == 'nt' else '#!/bin/sh\necho "' + text + '"\n')
+                    self.guard.chmod(0o700)
+                summary = self.run_installer('--apply')
+                self.assertEqual(summary['opencode_launch_mode'], 'auto')
+                self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['opencode'], 'auto')
 
     def test_codex_follows_guard_only_with_hook(self):
         path = self.config()
@@ -274,7 +300,7 @@ class InstallerTests(unittest.TestCase):
                 self.assertIn('rollout and are not Self-Modification.', policy)
                 self.assertIn('permission settings outside that rollout.', policy)
                 self.assertIn('Unasked widening of permissions\nstays denied.', policy)
-        self.assertIn('Policy revision: 2026-10-18.', auto['environment'][-1])
+        self.assertIn('Policy revision: 2026-11-03.', auto['environment'][-1])
         self.assertEqual(self.run_installer()['changed_paths'], [])
 
 
