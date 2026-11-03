@@ -13,6 +13,13 @@ if [ -d "$HOME/.local/bin" ]; then
         *) PATH="$HOME/.local/bin${PATH:+:$PATH}" ;;
     esac
 fi
+# Bun-linked CLIs (shelf, mayfly). fish adds this in config.fish; zsh had no entry.
+if [ -d "$HOME/.bun/bin" ]; then
+    case ":$PATH:" in
+        *":$HOME/.bun/bin:"*) ;;
+        *) PATH="$HOME/.bun/bin${PATH:+:$PATH}" ;;
+    esac
+fi
 if [[ $(uname) == Darwin && -d "/Library/Application Support/Harbor/purser" ]]; then
     case ":$PATH:" in
         *":/Library/Application Support/Harbor/purser:"*) ;;
@@ -20,6 +27,12 @@ if [[ $(uname) == Darwin && -d "/Library/Application Support/Harbor/purser" ]]; 
     esac
 fi
 export PATH
+
+# AppTech Shelf CLI endpoints. Without them `shelf` targets 127.0.0.1. Here, not
+# .zshrc, so agents' `zsh -c` commands get them too. Keep in step with
+# ~/.config/fish/conf.d/shelf.fish.
+export SHELF_TRUSTED_BASE_URL=https://shelf.apptechcorp.com
+export SHELF_RENDER_BASE_URL=https://shelf.apptechcorp.com
 
 # Agent harnesses write bash. With fish as the login shell, Claude Code and
 # Codex fall back to zsh and run each command as `zsh -c`; OpenCode does too.
