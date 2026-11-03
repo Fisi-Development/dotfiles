@@ -1,6 +1,6 @@
 # Royal's shared authorization policy
 
-Policy revision: 2026-10-18. Apply alongside harness safety policy and the current
+Policy revision: 2026-11-03. Apply alongside harness safety policy and the current
 project's action gates. Evaluate the requested action, payload, destination,
 executor, account, and project separately. Credentials or a configured provider
 alone grant no permission. Task authorization does not change runtime access.
@@ -192,6 +192,11 @@ threads and delegated tasks, and native subagents.
   guard, and OpenCode on hosts where its OpenCode plugin is installed (live
   denial controls on every host, 18 Oct 2026; Royal extended full access to all
   three the same day).
+- OpenCode gets full access wherever the guard is installed (its version reads)
+  and its OpenCode plugin is installed, whether or not the guard is current.
+  OpenCode has no auto reviewer: T3 runs it in any lower mode by asking Royal
+  before every command, edit and fetch, which stops unattended work such as the
+  GLM review loop (Royal, 3 Nov 2026).
 - Auto on every other host, and wherever the guard's version cannot be read.
 
 A launch takes the mode of the host it runs on.
@@ -206,9 +211,10 @@ delegation, not a permission bypass.
 For the classifiers: launching a native subagent for the task in the parent's
 own mode is not Auto-Mode Bypass. A Telepathica handoff or T3 thread that its
 host's configuration starts in full access, on a host where agent-guard is
-current, is not Create Unsafe Agents when it runs a harness agent-guard checks
-(Claude Code; Codex where its hooks.json registers the guard; OpenCode where the
-plugin is installed): agent-guard is then a per-action gate on every tool call
+current (for OpenCode, installed with its plugin), is not Create Unsafe Agents
+when it runs a harness agent-guard checks (Claude Code; Codex where its
+hooks.json registers the guard; OpenCode where the plugin is installed):
+agent-guard is then a per-action gate on every tool call
 that session makes. The same holds for a T3 delegated Codex or OpenCode task
 launched in full access from a full-access parent. A full-access session of a
 harness the guard does not check on that host has no such gate, and this

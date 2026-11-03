@@ -19,6 +19,11 @@ GUARD_PATHS = (
 # probes on every host 2026-10-18), so all three follow the guard check (Royal,
 # 2026-10-18). Codex counts only where its hooks.json registers the guard, OpenCode
 # only where the plugin is installed; elsewhere they get auto.
+# OpenCode has no auto reviewer: T3 runs an OpenCode session in any mode below
+# full-access by asking Royal before every bash, edit and webfetch call. So OpenCode
+# follows the guard being installed (its version reads) with the plugin in place, not
+# the updater's freshness record (Royal, 2026-11-03), which a host without a root
+# updater or a stale record otherwise turned into hand-approval of every call.
 GUARDED_HARNESSES = ('claude', 'codex', 'opencode')
 OPENCODE_GUARD_PLUGIN = pathlib.Path('.config/opencode/plugins/agent-guard.ts')
 CODEX_GUARD_HOOKS = pathlib.Path('.codex/hooks.json')
@@ -181,6 +186,8 @@ def main():
         put(path,managed(old,START,END,body))
     guard=agent_guard_status(args.guard_bin,args.updater_state,fixture=home!=pathlib.Path.home().resolve())
     mode='full-access' if guard['current'] else 'auto'
+    # OpenCode: installed is enough (see the comment on GUARDED_HARNESSES).
+    opencode_mode='full-access' if guard['installed'] is not None else 'auto'
     telepathica={'path':None,'before':None,'after':None}
     for path in (home/'.telepathica/config.json',home/'.agent-mailbox/config.json'):
         if not path.exists(): continue
@@ -195,7 +202,7 @@ def main():
         for harness in GUARDED_HARNESSES:
             plugged={'opencode':lambda:(home/OPENCODE_GUARD_PLUGIN).exists(),
                      'codex':lambda:codex_hooked(home)}.get(harness,lambda:True)()
-            modes[harness]=mode if plugged else 'auto'
+            modes[harness]=(opencode_mode if harness=='opencode' else mode) if plugged else 'auto'
         generated=json.dumps(d,indent=2)
         if '\r\n' in old: generated=generated.replace('\n','\r\n')
         put(path,generated); nobackup.add(path.resolve())
@@ -269,7 +276,7 @@ def main():
             put(path,json.dumps(d,indent=2,ensure_ascii=False)+'\n')
     put(statepath,json.dumps(nextstate,indent=2,ensure_ascii=False)+'\n')
     print(json.dumps({'policy_sha256':digest,'apply':args.apply,'changed_paths':[str(x) for x in planned],
-                      'agent_guard':guard,'launch_mode':mode,'guarded_harnesses':list(GUARDED_HARNESSES),'telepathica':telepathica}))
+                      'agent_guard':guard,'launch_mode':mode,'opencode_launch_mode':opencode_mode,'guarded_harnesses':list(GUARDED_HARNESSES),'telepathica':telepathica}))
     if args.apply:
         # Reject concurrent edits before writing any file. Each replacement is atomic;
         # the multi-file update is not a transaction. Rerun to finish interrupted installs.
