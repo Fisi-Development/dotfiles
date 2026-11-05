@@ -24,6 +24,12 @@ To check, run a one-shot session from a folder under home with no CLAUDE.md and 
 
 The symlink templates use `.chezmoi.homeDir`, so they resolve against each machine's home directory. Changes to the live agreement reach both symlinks immediately, but chezmoi stores a snapshot until the next `add`.
 
+## Fleet memory
+
+`~/.agents/fleet-memory.md` is not managed by chezmoi. Harbor's `tools/fleet_memory.py sync` (own-tools-sync's `fleet-memory` entry, every 15 minutes) renders it on each host from the Claude Code feedback memories shared through Chartroom's `meta/memory/` (Harbor `docs/fleet-memory.md`). `~/.claude/CLAUDE.md` imports it with `@~/.agents/fleet-memory.md`; Claude Code skips the import while the file does not exist. Codex has no import, so the same sync writes `AGENTS.override.md` in each Codex home whose `AGENTS.md` is the shared agreement: the agreement followed by the digest. Codex reads an override in place of `AGENTS.md`. The work home's scoped `AGENTS.md` gets none.
+
+The override is a copy, so a change to `~/AGENTS.md` reaches Codex at the next sync, not at once. After applying `~/AGENTS.md`, run `python3 ~/git/harbor/tools/fleet_memory.py sync` (`python` on Windows) to refresh it. Never edit an override by hand; `fleet_memory.py uninstall` removes the digest and every generated override on a host.
+
 ## Capture local edits
 
 After editing the agreement, update its encrypted source:
