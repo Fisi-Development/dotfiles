@@ -10,7 +10,7 @@ schema = 2
 mode = "architect"
 orchestrator = "claude/opus"         # the main agent; reads intent, designs, reviews, integrates
 executor = ["gpt/sol@medium"]        # closed contracts; raise effort one level per miss, to xhigh
-light = "gpt/luna@medium"            # recon and one-shot mechanical edits
+light = "gpt/terra@low+fast"         # recon and one-shot mechanical edits; Harbor D066 (2026-11-05 scout benchmark): Terra with the priority tier beat Luna 38.5 to 20 of 40
 # light = "claude/haiku@medium"      # UNCONFIRMED option (2026-10-08): bills the Claude subscription, marked exhausted above
 reviewer = "glm/flash"               # company LiteLLM review grant, 2026-10-05; parent reviews deliverables too
 # premium: omitted, so each harness adapter's default applies.
