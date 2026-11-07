@@ -13,7 +13,7 @@ executor = ["gpt/sol@medium"]        # closed contracts; raise effort one level 
 light = "gpt/terra@low+fast"         # recon and one-shot mechanical edits; Harbor D066 (2026-11-05 scout benchmark): Terra with the priority tier beat Luna 38.5 to 20 of 40
 # light = "claude/haiku@medium"      # UNCONFIRMED option (2026-10-08): bills the Claude subscription, marked exhausted above
 reviewer = "glm/flash"               # company LiteLLM review grant, 2026-10-05; parent reviews deliverables too
-# premium: omitted, so each harness adapter's default applies.
+premium = "claude/opus"              # judges, never types: cross-family review of GPT-authored work (2026-11-07, token-spend routing), so Claude keeps review when orchestrator moves to GPT
 
 [pins]                               # GPT, Claude, and Grok tiers auto-resolve to the newest slug; pin only to hold one back
 "glm/flash" = "fireworks_ai/accounts/fireworks/models/glm-5p3-flash"
