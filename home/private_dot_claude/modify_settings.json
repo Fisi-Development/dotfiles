@@ -226,4 +226,15 @@
 {{-   end -}}
 {{- end -}}
 {{- $_ := set $settings "skillOverrides" $overrides -}}
+{{- /*
+  Added 2026-11-07 (token-spend study): sessions compact at 300K tokens, not the
+  1M default. 62% of fleet Claude cost proxy sat in sessions averaging over 200K
+  context per call, and cache reads were 70% of it. A replay of burnbutu's 30
+  days of calls priced this at about 26% less Claude cost, with about 193 extra
+  compactions a month. 300K, not 200K: the Haiku 100K cap removed on 2026-10-08
+  thrashed a worker that read large files. A per-model value under
+  modelSettings (what /autocompact saves) still wins over this one. Same value in
+  home/private_dot_claude-hub-personal/modify_private_settings.json.
+*/ -}}
+{{- $_ := set $settings "autoCompactWindow" 300000 -}}
 {{- toPrettyJson $settings | trim }}

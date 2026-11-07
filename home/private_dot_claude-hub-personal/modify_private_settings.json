@@ -24,10 +24,19 @@
 {{-     end -}}
 {{-   end -}}
 {{- end -}}
-{{- if or (not (trim .chezmoi.stdin)) (not $guardOwnsAsks) -}}
+{{- /*
+  Added 2026-11-07: sessions compact at 300K tokens, not the 1M default. The
+  reason and the numbers are in home/private_dot_claude/modify_settings.json;
+  keep the two values the same.
+*/ -}}
+{{- if not (trim .chezmoi.stdin) -}}
 {{-   .chezmoi.stdin -}}
 {{- else -}}
 {{-   $settings := fromJson .chezmoi.stdin -}}
+{{-   $_ := set $settings "autoCompactWindow" 300000 -}}
+{{-   if not $guardOwnsAsks -}}
+{{-     toPrettyJson $settings | trim -}}
+{{-   else -}}
 {{-   $guardAsks := list "Bash(composio execute SLACK_SEND_MESSAGE:*)" "Bash(composio execute SLACK_CHAT_POST_MESSAGE:*)" "Bash(composio execute SLACK_SEND_ME_MESSAGE:*)" "Bash(composio execute SLACK_SEND_EPHEMERAL_MESSAGE:*)" "Bash(composio execute SLACK_SCHEDULE_MESSAGE:*)" "Bash(composio execute SLACK_UPLOAD_OR_CREATE_A_FILE_IN_SLACK:*)" "Bash(composio execute SLACK_ADD_REACTION_TO_AN_ITEM:*)" -}}
 {{-   if and (hasKey $settings "permissions") (hasKey (index $settings "permissions") "ask") -}}
 {{-     $perms := index $settings "permissions" -}}
@@ -40,4 +49,5 @@
 {{-     $_ := set $perms "ask" $cur -}}
 {{-   end -}}
 {{-   toPrettyJson $settings | trim -}}
+{{-   end -}}
 {{- end -}}
