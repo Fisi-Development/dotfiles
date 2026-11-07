@@ -25,7 +25,7 @@
 {{-   end -}}
 {{- end -}}
 {{- /*
-  Added 2026-11-07: sessions compact at 300K tokens, not the 1M default. The
+  Added 2026-11-07: sessions compact at 500K tokens, not the 1M default. The
   reason and the numbers are in home/private_dot_claude/modify_settings.json;
   keep the two values the same.
 */ -}}
@@ -33,7 +33,7 @@
 {{-   .chezmoi.stdin -}}
 {{- else -}}
 {{-   $settings := fromJson .chezmoi.stdin -}}
-{{-   $_ := set $settings "autoCompactWindow" 300000 -}}
+{{-   $_ := set $settings "autoCompactWindow" 500000 -}}
 {{-   if not $guardOwnsAsks -}}
 {{-     toPrettyJson $settings | trim -}}
 {{-   else -}}
