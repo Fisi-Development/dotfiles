@@ -45,7 +45,12 @@ def check_links(target, base, names):
 
 def set_aside(dest):
     """Keep an older run's copy beside the link rather than delete it."""
-    backup = dest.with_name(dest.name + '.before-link-' + time.strftime('%Y%m%dT%H%M%S'))
+    stem = dest.name + '.before-link-' + time.strftime('%Y%m%dT%H%M%S')
+    backup, n = dest.with_name(stem), 1
+    # Two runs within one second must not overwrite (POSIX) or trip over
+    # (Windows) the earlier backup.
+    while backup.exists() or backup.is_symlink():
+        backup, n = dest.with_name(stem + '-' + str(n)), n + 1
     dest.rename(backup)
     print('Moved copied support path aside: ' + str(backup), file=sys.stderr)
 
@@ -68,16 +73,23 @@ def ensure_links(target, base, names):
                 os.symlink(src, dest, target_is_directory=True)
             continue
         # Link files beside the target first, so a host that cannot make file
-        # symlinks (Windows without Developer Mode) keeps its working copy.
+        # symlinks (Windows without Developer Mode) keeps a working copy. That
+        # copy is refreshed whenever its original changes, with the old one
+        # set aside, so the profile never keeps loading outdated instructions.
         temporary = dest.with_name('.' + name + '.link')
         if is_link(temporary) or temporary.exists():
             temporary.unlink()
         try:
             os.symlink(src, temporary)
         except OSError:
-            print('Kept a copy, file symlinks unavailable: ' + str(dest), file=sys.stderr)
-            if not dest.exists():
-                atomic(dest, src.read_bytes())
+            data = src.read_bytes()
+            if dest.exists() and dest.read_bytes() == data:
+                print('Copy current, file symlinks unavailable: ' + str(dest), file=sys.stderr)
+                continue
+            if dest.exists():
+                set_aside(dest)
+            atomic(dest, data)
+            print('Refreshed copy, file symlinks unavailable: ' + str(dest), file=sys.stderr)
             continue
         if dest.exists() and dest.read_bytes() != src.read_bytes():
             set_aside(dest)

@@ -104,6 +104,59 @@ class HubSupportLinkTests(unittest.TestCase):
         self.assertFalse(self.claude_hub.exists())
         self.assertFalse(self.codex_hub.exists())
 
+    def run_without_file_symlinks(self, *args, prelude=''):
+        # A Windows host without Developer Mode: directory links work, file symlinks fail.
+        shim = self.home / 'no_file_symlinks.py'
+        shim.write_text(
+            'import os, runpy, sys, time\n' + prelude +
+            'real = os.symlink\n'
+            'def deny(src, dst, target_is_directory=False, **kw):\n'
+            '    if not target_is_directory:\n'
+            '        raise OSError("file symlinks unavailable")\n'
+            '    return real(src, dst, target_is_directory, **kw)\n'
+            'os.symlink = deny\n'
+            'sys.argv = sys.argv[1:]\n'
+            'runpy.run_path(sys.argv[0], run_name="__main__")\n')
+        return subprocess.run([sys.executable, '-I', str(shim), str(SCRIPT), '--home', str(self.home), *args],
+                              capture_output=True, text=True, timeout=60)
+
+    def test_copy_without_file_symlinks_follows_its_original(self):
+        # The hub CLAUDE.md copy an earlier run left, before the original changed.
+        self.claude_hub.mkdir()
+        (self.claude_hub / 'CLAUDE.md').write_text('claude v0\n')
+        result = self.run_without_file_symlinks('--support-only')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        hub_md = self.claude_hub / 'CLAUDE.md'
+        self.assertFalse(hub_md.is_symlink())
+        self.assertEqual(hub_md.read_text(), 'claude v1\n')
+        backups = self.backups(self.claude_hub, 'CLAUDE.md')
+        self.assertEqual(len(backups), 1)
+        self.assertEqual((self.claude_hub / backups[0]).read_text(), 'claude v0\n')
+        # A current copy is left alone, with no new backup.
+        again = self.run_without_file_symlinks('--support-only')
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertEqual(len(self.backups(self.claude_hub, 'CLAUDE.md')), 1)
+        # A later change to the original reaches the copy on the next run.
+        (self.home / '.claude/CLAUDE.md').write_text('claude v2\n')
+        later = self.run_without_file_symlinks('--support-only')
+        self.assertEqual(later.returncode, 0, later.stderr)
+        self.assertEqual(hub_md.read_text(), 'claude v2\n')
+
+    def test_refreshes_in_one_second_keep_every_backup(self):
+        self.claude_hub.mkdir()
+        hub_md = self.claude_hub / 'CLAUDE.md'
+        # Both runs see the same timestamp, as two runs within one second do.
+        fixed = 'time.strftime = lambda fmt, *a: "20261107T120000"\n'
+        hub_md.write_text('hand edit one\n')
+        first = self.run_without_file_symlinks('--support-only', prelude=fixed)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        hub_md.write_text('hand edit two\n')
+        second = self.run_without_file_symlinks('--support-only', prelude=fixed)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        kept = sorted((self.claude_hub / name).read_text() for name in self.backups(self.claude_hub, 'CLAUDE.md'))
+        self.assertEqual(kept, ['hand edit one\n', 'hand edit two\n'])
+        self.assertEqual(hub_md.read_text(), 'claude v1\n')
+
     def test_link_to_another_directory_fails_before_writes(self):
         elsewhere = self.home / 'elsewhere'
         elsewhere.mkdir()
