@@ -32,8 +32,14 @@
   instead of relying on hooks or the auto-mode classifier.
   Added 2026-10-14: work Slack moved to Composio (slack-composio skill), so its
   send, schedule, upload and reaction slugs, and composio proxy and run, ask too.
+  Moved 2026-11-06: the `composio execute SLACK_*` asks now come from
+  agent-guard 0.5.59, which lets a send through without a prompt when Royal
+  approved its exact text in chat and asks otherwise. A settings ask rule
+  overrides a hook's allow, so these entries are stripped below once the host's
+  installed guard (its updater-status.json) is 0.5.59 or later, and kept until
+  then. composio proxy and run still ask here.
 */ -}}
-{{- $ask := list "mcp__plugin_slack_slack__slack_send_message" "mcp__plugin_slack_slack__slack_schedule_message" "Bash(gws gmail users messages send:*)" "Bash(gws gmail users drafts send:*)" "Bash(composio execute SLACK_SEND_MESSAGE:*)" "Bash(composio execute SLACK_CHAT_POST_MESSAGE:*)" "Bash(composio execute SLACK_SEND_ME_MESSAGE:*)" "Bash(composio execute SLACK_SEND_EPHEMERAL_MESSAGE:*)" "Bash(composio execute SLACK_SCHEDULE_MESSAGE:*)" "Bash(composio execute SLACK_UPLOAD_OR_CREATE_A_FILE_IN_SLACK:*)" "Bash(composio execute SLACK_ADD_REACTION_TO_AN_ITEM:*)" "Bash(composio proxy:*)" "Bash(composio run:*)" -}}
+{{- $ask := list "mcp__plugin_slack_slack__slack_send_message" "mcp__plugin_slack_slack__slack_schedule_message" "Bash(gws gmail users messages send:*)" "Bash(gws gmail users drafts send:*)" "Bash(composio proxy:*)" "Bash(composio run:*)" -}}
 {{- $perms := dict -}}
 {{- if hasKey $settings "permissions" -}}
 {{-   $perms = index $settings "permissions" -}}
@@ -43,10 +49,26 @@
   FISI does not have. Its mcp__ramp__ ask rules are stripped so every host
   converges; drop this pass once all hosts have applied it.
 */ -}}
+{{- $guardAsks := list "Bash(composio execute SLACK_SEND_MESSAGE:*)" "Bash(composio execute SLACK_CHAT_POST_MESSAGE:*)" "Bash(composio execute SLACK_SEND_ME_MESSAGE:*)" "Bash(composio execute SLACK_SEND_EPHEMERAL_MESSAGE:*)" "Bash(composio execute SLACK_SCHEDULE_MESSAGE:*)" "Bash(composio execute SLACK_UPLOAD_OR_CREATE_A_FILE_IN_SLACK:*)" "Bash(composio execute SLACK_ADD_REACTION_TO_AN_ITEM:*)" -}}
+{{- $guardOwnsAsks := false -}}
+{{- range list "/Library/Application Support/ClaudeCode/agent-guard/updater-status.json" "/etc/claude-code/agent-guard/updater-status.json" "C:/Program Files/ClaudeCode/agent-guard/updater-status.json" -}}
+{{-   if stat . -}}
+{{- /* Regex, not fromJson: a garbled status file must keep the asks, not abort the apply. */ -}}
+{{-     $field := regexFind "\"version\"\\s*:\\s*\"[0-9]+\\.[0-9]+\\.[0-9]+\"" (include .) -}}
+{{-     if $field -}}
+{{-       if semverCompare ">=0.5.59" (regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" $field) -}}
+{{-         $guardOwnsAsks = true -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- if not $guardOwnsAsks -}}
+{{-   $ask = concat $ask $guardAsks -}}
+{{- end -}}
 {{- $cur := list -}}
 {{- if hasKey $perms "ask" -}}
 {{-   range (index $perms "ask") -}}
-{{-     if not (hasPrefix "mcp__ramp__" .) -}}
+{{-     if not (or (hasPrefix "mcp__ramp__" .) (and $guardOwnsAsks (has . $guardAsks))) -}}
 {{-       $cur = append $cur . -}}
 {{-     end -}}
 {{-   end -}}
