@@ -29,7 +29,13 @@ extracted from the authorized-review, "Royal's GitHub repositories",
 "Telepathica commands", "Chezmoi rollout" and "Launch modes" sections, since
 `allow` entries are the classifier's exceptions to its soft blocks (External System Writes,
 Create Public Surface, Production Deploy).
-Shared agent entry points reference the canonical file.
+Shared agent entry points reference the canonical file. Codex's `AGENTS.md`
+(the shared agreement) gets a one-line pointer to read it before provider
+delegation or remote writes. Claude sessions get the same pointer through their
+`@~/AGENTS.md` import and no longer import the whole policy (Royal, 7 Nov 2026):
+the installer removes an old `@~/.agents/authorization-policy.md` block from
+`~/.claude/CLAUDE.md`, and the classifier still reads the full text through
+`autoMode`.
 
 The installer writes `t3_runtime_modes` from the agent-guard current check into
 `~/.telepathica/config.json`, or `~/.agent-mailbox/config.json` when only that

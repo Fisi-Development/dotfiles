@@ -238,6 +238,47 @@ class InstallerTests(unittest.TestCase):
             self.assertIn('$defaults', auto[key])
         self.assertEqual(self.run_installer()['changed_paths'], [])
 
+    POINTER = 'Read ~/.agents/authorization-policy.md before provider delegation or remote writes; apply it alongside project gates.'
+    CLAUDE_MD = ('@~/AGENTS.md\n@~/.agents/fleet-memory.md\n\n## Claude Code\n\n- note\n\n'
+                 '<!-- shared-authorization-policy:start -->\n@~/.agents/authorization-policy.md\n'
+                 '<!-- shared-authorization-policy:end -->\n')
+
+    def test_claude_md_drops_the_policy_import_and_keeps_the_rest(self):
+        self.write('.claude/settings.json', '{}')
+        self.write('AGENTS.md', '# Agreement\n\n<!-- shared-authorization-policy:start -->\n' + self.POINTER +
+                   '\n<!-- shared-authorization-policy:end -->\n')
+        path = self.write('.claude/CLAUDE.md', self.CLAUDE_MD)
+        self.run_installer('--apply')
+        text = path.read_text()
+        self.assertNotIn('authorization-policy', text)
+        self.assertEqual(text, '@~/AGENTS.md\n@~/.agents/fleet-memory.md\n\n## Claude Code\n\n- note\n\n')
+        self.assertEqual(self.run_installer()['changed_paths'], [])
+        self.assertTrue(json.loads((self.home / '.claude/settings.json').read_bytes())['autoMode']['environment'][-1]
+                        .endswith(POLICY))
+
+    def test_claude_md_without_a_reachable_pointer_gets_the_pointer_not_the_policy(self):
+        # Review of dotfiles #29: a Claude-only home whose agreement lacks the pointer.
+        self.write('.claude/settings.json', '{}')
+        self.write('AGENTS.md', '# Agreement without the pointer\n')
+        path = self.write('.claude/CLAUDE.md', self.CLAUDE_MD)
+        self.run_installer('--apply')
+        text = path.read_text()
+        self.assertIn(self.POINTER, text)
+        self.assertNotIn('@~/.agents/authorization-policy.md', text)
+        self.assertEqual(self.run_installer()['changed_paths'], [])
+
+    @unittest.skipIf(os.name == 'nt', 'symlink creation needs Developer Mode on Windows')
+    def test_pointer_planned_through_codex_in_the_same_run_lets_claude_drop_the_block(self):
+        self.write('.claude/settings.json', '{}')
+        agreement = self.write('AGENTS.md', '# Agreement\n')
+        self.write('.codex/config.toml', '')
+        (self.home / '.codex/AGENTS.md').symlink_to(agreement)
+        path = self.write('.claude/CLAUDE.md', self.CLAUDE_MD)
+        self.run_installer('--apply')
+        self.assertIn(self.POINTER, agreement.read_text())
+        self.assertNotIn('authorization-policy', path.read_text())
+        self.assertEqual(self.run_installer()['changed_paths'], [])
+
     def test_codex_preamble_and_old_orphan_adoption(self):
         for name in ('.codex', '.codex-work'):
             with self.subTest(name=name):
@@ -300,7 +341,7 @@ class InstallerTests(unittest.TestCase):
                 self.assertIn('rollout and are not Self-Modification.', policy)
                 self.assertIn('permission settings outside that rollout.', policy)
                 self.assertIn('Unasked widening of permissions\nstays denied.', policy)
-        self.assertIn('Policy revision: 2026-11-03.', auto['environment'][-1])
+        self.assertIn('Policy revision: 2026-11-07.', auto['environment'][-1])
         self.assertEqual(self.run_installer()['changed_paths'], [])
 
 

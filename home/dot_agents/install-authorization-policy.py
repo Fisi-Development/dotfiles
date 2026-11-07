@@ -174,6 +174,7 @@ def main():
     # Instruction files are chezmoi snapshots shared by every host, so they name
     # the policy by a home-relative path; an absolute one drifts per host.
     shared='~/.agents/authorization-policy.md'
+    pointer='Read '+shared+' before provider delegation or remote writes; apply it alongside project gates.'
     statepath=home/'.agents/authorization-adapter-state.json'
     nobackup=set()  # Files holding credentials get no plaintext backup copy.
     state=json.loads(statepath.read_text(encoding='utf-8')) if statepath.exists() else {}; nextstate={}; planned={}
@@ -225,7 +226,7 @@ def main():
         generated=managed(old if TSTART in old else stripped,TSTART,TEND,block)
         tomllib.loads(generated)
         put(path,generated)
-        instruction(root/'AGENTS.md','Read '+shared+' before provider delegation or remote writes; apply it alongside project gates.')
+        instruction(root/'AGENTS.md',pointer)
     def section(title):
         if '## '+title+'\n\n' not in content: raise ValueError(str(policy)+': policy lacks section '+title+'; apply the matching policy first')
         return content.split('## '+title+'\n\n',1)[1].split('\n## ',1)[0].strip()
@@ -251,7 +252,18 @@ def main():
             auto[key]=values; generated[key]=entry
         nextstate[str(path.resolve())]=generated
         put(path,json.dumps(d,indent=2,ensure_ascii=False)+'\n')
-        instruction(root/'CLAUDE.md','@'+shared)
+        # Claude sessions no longer import the whole policy (Royal, 7 Nov 2026,
+        # move P0): the classifier keeps it in autoMode above. CLAUDE.md drops its
+        # block only when it imports ~/AGENTS.md and that file (as planned here)
+        # carries the pointer; otherwise the block holds the pointer itself.
+        claude_md=root/'CLAUDE.md'
+        old=claude_md.read_text(encoding='utf-8') if claude_md.exists() else ''
+        agreement=(home/'AGENTS.md').resolve()
+        agreed=planned[agreement][1] if agreement in planned else (read_exact(agreement) if agreement.exists() else '')
+        if '@~/AGENTS.md' in old and pointer in agreed:
+            put(claude_md,remove_block(old,START,END))
+        else:
+            instruction(claude_md,pointer)
     oc=home/'.config/opencode'
     if oc.exists():
         path=oc/'opencode.jsonc' if (oc/'opencode.jsonc').exists() else oc/'opencode.json'
