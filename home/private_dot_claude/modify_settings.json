@@ -35,8 +35,9 @@
   Moved 2026-11-06: the `composio execute SLACK_*` asks now come from
   agent-guard 0.5.59, which lets a send through without a prompt when Royal
   approved its exact text in chat and asks otherwise. A settings ask rule
-  overrides a hook's allow, so these entries are stripped below and every host
-  converges. composio proxy and run still ask here.
+  overrides a hook's allow, so these entries are stripped below once the host's
+  installed guard (its updater-status.json) is 0.5.59 or later, and kept until
+  then. composio proxy and run still ask here.
 */ -}}
 {{- $ask := list "mcp__plugin_slack_slack__slack_send_message" "mcp__plugin_slack_slack__slack_schedule_message" "Bash(gws gmail users messages send:*)" "Bash(gws gmail users drafts send:*)" "Bash(composio proxy:*)" "Bash(composio run:*)" -}}
 {{- $perms := dict -}}
@@ -49,10 +50,22 @@
   converges; drop this pass once all hosts have applied it.
 */ -}}
 {{- $guardAsks := list "Bash(composio execute SLACK_SEND_MESSAGE:*)" "Bash(composio execute SLACK_CHAT_POST_MESSAGE:*)" "Bash(composio execute SLACK_SEND_ME_MESSAGE:*)" "Bash(composio execute SLACK_SEND_EPHEMERAL_MESSAGE:*)" "Bash(composio execute SLACK_SCHEDULE_MESSAGE:*)" "Bash(composio execute SLACK_UPLOAD_OR_CREATE_A_FILE_IN_SLACK:*)" "Bash(composio execute SLACK_ADD_REACTION_TO_AN_ITEM:*)" -}}
+{{- $guardOwnsAsks := false -}}
+{{- range list "/Library/Application Support/ClaudeCode/agent-guard/updater-status.json" "/etc/claude-code/agent-guard/updater-status.json" "C:/Program Files/ClaudeCode/agent-guard/updater-status.json" -}}
+{{-   if stat . -}}
+{{-     $status := include . | fromJson -}}
+{{-     if and (hasKey $status "version") (semverCompare ">=0.5.59" (toString (index $status "version"))) -}}
+{{-       $guardOwnsAsks = true -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- if not $guardOwnsAsks -}}
+{{-   $ask = concat $ask $guardAsks -}}
+{{- end -}}
 {{- $cur := list -}}
 {{- if hasKey $perms "ask" -}}
 {{-   range (index $perms "ask") -}}
-{{-     if not (or (hasPrefix "mcp__ramp__" .) (and (hasPrefix "Bash(composio execute SLACK_" .) (has . $guardAsks))) -}}
+{{-     if not (or (hasPrefix "mcp__ramp__" .) (and $guardOwnsAsks (has . $guardAsks))) -}}
 {{-       $cur = append $cur . -}}
 {{-     end -}}
 {{-   end -}}

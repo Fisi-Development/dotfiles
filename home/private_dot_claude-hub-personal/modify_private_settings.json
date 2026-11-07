@@ -8,9 +8,20 @@
   Removed 2026-11-06: the `composio execute SLACK_*` ask rules. agent-guard
   0.5.59 asks for those sends itself and lets one through without a prompt
   when Royal approved its exact text in chat; a settings ask rule would
-  override that. Same list as home/private_dot_claude/modify_settings.json.
+  override that. Stripped only once the host's installed guard (its
+  updater-status.json) is 0.5.59 or later; until then the file passes through.
+  Same list and check as home/private_dot_claude/modify_settings.json.
 */ -}}
-{{- if not (trim .chezmoi.stdin) -}}
+{{- $guardOwnsAsks := false -}}
+{{- range list "/Library/Application Support/ClaudeCode/agent-guard/updater-status.json" "/etc/claude-code/agent-guard/updater-status.json" "C:/Program Files/ClaudeCode/agent-guard/updater-status.json" -}}
+{{-   if stat . -}}
+{{-     $status := include . | fromJson -}}
+{{-     if and (hasKey $status "version") (semverCompare ">=0.5.59" (toString (index $status "version"))) -}}
+{{-       $guardOwnsAsks = true -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- if or (not (trim .chezmoi.stdin)) (not $guardOwnsAsks) -}}
 {{-   .chezmoi.stdin -}}
 {{- else -}}
 {{-   $settings := fromJson .chezmoi.stdin -}}
