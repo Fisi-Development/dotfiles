@@ -106,6 +106,9 @@ AppData/Local/pnpm
 # sweeps stale entries in ~/.cache/harbor-build/tmp (docs/runbooks/janitor.md).
 .config/go
 .cache/harbor-build
+# systemd user environment: TMPDIR on disk too, since cmd/link puts its cgo
+# go-link-* folder under TMPDIR, not GOTMPDIR. Linux only (systemd).
+.config/environment.d
 # Linux login shells: ~/.profile is Ubuntu's stock profile plus ~/.cargo/env,
 # and ~/.local/bin/python links python3, so `bash -lc` finds cargo and python.
 .profile

@@ -1,0 +1,13 @@
+# Temp files on disk, not in /tmp. On burnbutu /tmp is a 7.6 GiB tmpfs with a
+# per-user quota (systemd's tmp.mount, usrquota), and agent scratch fills it
+# inside the janitor's 2-day window. GOTMPDIR alone was not enough: cmd/link
+# makes its go-link-* folder under TMPDIR for cgo external linking, and that
+# hit "mapping output file failed: disk quota exceeded" (bosun case
+# go/linker-mapping-output-file-failed-disk-quota-exceeded, 2026-11-07).
+#
+# The systemd user manager reads this at start and on `systemctl --user
+# daemon-reload`; units started after that (T3, Telepathica, timers) and their
+# children inherit it. A process already running keeps its old environment, so
+# T3's long-lived service launcher needs a restart to pass it on.
+# Harbor's janitor sweeps stale entries here (docs/runbooks/janitor.md).
+TMPDIR={{ .chezmoi.homeDir }}/.cache/harbor-build/tmp
