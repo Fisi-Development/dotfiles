@@ -251,7 +251,13 @@ def main():
             auto[key]=values; generated[key]=entry
         nextstate[str(path.resolve())]=generated
         put(path,json.dumps(d,indent=2,ensure_ascii=False)+'\n')
-        instruction(root/'CLAUDE.md','@'+shared)
+        # Claude sessions no longer import the whole policy (Royal, 7 Nov 2026,
+        # move P0): the classifier keeps it in autoMode above, and CLAUDE.md
+        # imports ~/AGENTS.md, whose Codex pointer line says when to read it.
+        claude_md=root/'CLAUDE.md'
+        if claude_md.exists():
+            old=claude_md.read_text(encoding='utf-8')
+            put(claude_md,remove_block(old,START,END))
     oc=home/'.config/opencode'
     if oc.exists():
         path=oc/'opencode.jsonc' if (oc/'opencode.jsonc').exists() else oc/'opencode.json'

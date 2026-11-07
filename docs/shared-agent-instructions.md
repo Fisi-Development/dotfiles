@@ -24,6 +24,10 @@ To check, run a one-shot session from a folder under home with no CLAUDE.md and 
 
 The symlink templates use `.chezmoi.homeDir`, so they resolve against each machine's home directory. Changes to the live agreement reach both symlinks immediately, but chezmoi stores a snapshot until the next `add`.
 
+## Size limits
+
+Every session loads the agreement, so it has a size limit Royal set on 7 Nov 2026: 20 KB for `~/AGENTS.md`, 17 KB for the authorization policy (which only the classifiers load in full) and 16 KB for a repository `AGENTS.md`. `tests/test_context_budget.py` fails when a source crosses one, naming the file and its size; it reads the encrypted agreement's length from its age framing, without the key. Move a dated incident or tool recipe to the skill, runbook or decision that owns the topic and leave a one-line pointer, rather than raising a limit (Harbor `meta/plans/2026-11-07-always-loaded-demotion.md` has the moves made so far).
+
 ## Fleet memory
 
 `~/.agents/fleet-memory.md` is not managed by chezmoi. Harbor's `tools/fleet_memory.py sync` (own-tools-sync's `fleet-memory` entry, every 15 minutes) renders it on each host from the Claude Code feedback memories shared through Chartroom's `meta/memory/` (Harbor `docs/fleet-memory.md`). `~/.claude/CLAUDE.md` imports it with `@~/.agents/fleet-memory.md`; Claude Code skips the import while the file does not exist. Codex has no import, so the same sync writes `AGENTS.override.md` in each Codex home whose `AGENTS.md` is the shared agreement: the agreement followed by the digest. Codex reads an override in place of `AGENTS.md`. The work home's scoped `AGENTS.md` gets none.

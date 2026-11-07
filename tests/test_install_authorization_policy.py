@@ -238,6 +238,19 @@ class InstallerTests(unittest.TestCase):
             self.assertIn('$defaults', auto[key])
         self.assertEqual(self.run_installer()['changed_paths'], [])
 
+    def test_claude_md_drops_the_policy_import_and_keeps_the_rest(self):
+        self.write('.claude/settings.json', '{}')
+        path = self.write('.claude/CLAUDE.md', '@~/AGENTS.md\n@~/.agents/fleet-memory.md\n\n## Claude Code\n\n- note\n\n'
+                          '<!-- shared-authorization-policy:start -->\n@~/.agents/authorization-policy.md\n'
+                          '<!-- shared-authorization-policy:end -->\n')
+        self.run_installer('--apply')
+        text = path.read_text()
+        self.assertNotIn('authorization-policy', text)
+        self.assertEqual(text, '@~/AGENTS.md\n@~/.agents/fleet-memory.md\n\n## Claude Code\n\n- note\n\n')
+        self.assertEqual(self.run_installer()['changed_paths'], [])
+        self.assertTrue(json.loads((self.home / '.claude/settings.json').read_bytes())['autoMode']['environment'][-1]
+                        .endswith(POLICY))
+
     def test_codex_preamble_and_old_orphan_adoption(self):
         for name in ('.codex', '.codex-work'):
             with self.subTest(name=name):
@@ -300,7 +313,7 @@ class InstallerTests(unittest.TestCase):
                 self.assertIn('rollout and are not Self-Modification.', policy)
                 self.assertIn('permission settings outside that rollout.', policy)
                 self.assertIn('Unasked widening of permissions\nstays denied.', policy)
-        self.assertIn('Policy revision: 2026-11-03.', auto['environment'][-1])
+        self.assertIn('Policy revision: 2026-11-07.', auto['environment'][-1])
         self.assertEqual(self.run_installer()['changed_paths'], [])
 
 
