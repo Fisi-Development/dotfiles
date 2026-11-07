@@ -33,10 +33,10 @@
   Added 2026-10-14: work Slack moved to Composio (slack-composio skill), so its
   send, schedule, upload and reaction slugs, and composio proxy and run, ask too.
   Moved 2026-11-06: the `composio execute SLACK_*` asks now come from
-  agent-guard 0.5.59, which lets a send through without a prompt when Royal
+  agent-guard 0.5.60, which lets a send through without a prompt when Royal
   approved its exact text in chat and asks otherwise. A settings ask rule
   overrides a hook's allow, so these entries are stripped below once the host's
-  installed guard (its updater-status.json) is 0.5.59 or later, and kept until
+  installed guard (its updater-status.json) is 0.5.60 or later, and kept until
   then. composio proxy and run still ask here.
 */ -}}
 {{- $ask := list "mcp__plugin_slack_slack__slack_send_message" "mcp__plugin_slack_slack__slack_schedule_message" "Bash(gws gmail users messages send:*)" "Bash(gws gmail users drafts send:*)" "Bash(composio proxy:*)" "Bash(composio run:*)" -}}
@@ -56,7 +56,7 @@
 {{- /* Regex, not fromJson: a garbled status file must keep the asks, not abort the apply. */ -}}
 {{-     $field := regexFind "\"version\"\\s*:\\s*\"[0-9]+\\.[0-9]+\\.[0-9]+\"" (include .) -}}
 {{-     if $field -}}
-{{-       if semverCompare ">=0.5.59" (regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" $field) -}}
+{{-       if semverCompare ">=0.5.60" (regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" $field) -}}
 {{-         $guardOwnsAsks = true -}}
 {{-       end -}}
 {{-     end -}}

@@ -6,10 +6,10 @@
   untouched except for one strip.
 
   Removed 2026-11-06: the `composio execute SLACK_*` ask rules. agent-guard
-  0.5.59 asks for those sends itself and lets one through without a prompt
+  0.5.60 asks for those sends itself and lets one through without a prompt
   when Royal approved its exact text in chat; a settings ask rule would
   override that. Stripped only once the host's installed guard (its
-  updater-status.json) is 0.5.59 or later; until then the file passes through.
+  updater-status.json) is 0.5.60 or later; until then the file passes through.
   Same list and check as home/private_dot_claude/modify_settings.json.
 */ -}}
 {{- $guardOwnsAsks := false -}}
@@ -18,7 +18,7 @@
 {{- /* Regex, not fromJson: a garbled status file must keep the asks, not abort the apply. */ -}}
 {{-     $field := regexFind "\"version\"\\s*:\\s*\"[0-9]+\\.[0-9]+\\.[0-9]+\"" (include .) -}}
 {{-     if $field -}}
-{{-       if semverCompare ">=0.5.59" (regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" $field) -}}
+{{-       if semverCompare ">=0.5.60" (regexFind "[0-9]+\\.[0-9]+\\.[0-9]+" $field) -}}
 {{-         $guardOwnsAsks = true -}}
 {{-       end -}}
 {{-     end -}}
