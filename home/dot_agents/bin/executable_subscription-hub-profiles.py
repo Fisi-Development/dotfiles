@@ -45,7 +45,12 @@ def check_links(target, base, names):
 
 def set_aside(dest):
     """Keep an older run's copy beside the link rather than delete it."""
-    backup = dest.with_name(dest.name + '.before-link-' + time.strftime('%Y%m%dT%H%M%S'))
+    stem = dest.name + '.before-link-' + time.strftime('%Y%m%dT%H%M%S')
+    backup, n = dest.with_name(stem), 1
+    # Two runs within one second must not overwrite (POSIX) or trip over
+    # (Windows) the earlier backup.
+    while backup.exists() or backup.is_symlink():
+        backup, n = dest.with_name(stem + '-' + str(n)), n + 1
     dest.rename(backup)
     print('Moved copied support path aside: ' + str(backup), file=sys.stderr)
 
