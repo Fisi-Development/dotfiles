@@ -42,8 +42,8 @@ When something blocks, agents work through this ladder before involving Royal:
 
 1. Retry with a workaround.
 2. Take another route: a `mesh.py request` instead of paste-commands, the
-   logged-in browser instead of click-through steps, an ssh host alias instead
-   of a key path, a subagent on whichever host is awake.
+   logged-in browser instead of click-through steps, `mesh.py run <host> --
+   <command>` instead of a key path, a subagent on whichever host is awake.
 3. Ask the executor-role model (`[roles]` in `~/.agents/model-policy.toml`) for
    advice as a read-only consult.
 4. Record the friction with `bosun report` and continue on the workaround.
@@ -90,9 +90,9 @@ access-granting share links; the configured client may use existing credentials
 to authenticate without printing, committing or embedding them in prompts or
 evidence. Direct OpenRouter and direct Fireworks exports are outside it, even
 for the same GLM model: on any other route, stop and report the mismatch. It
-creates no new provider destination or Claude account (Claude's personal
-subscription is exhausted; Royal has no Claude work account), so report
-unavailable GLM rather than substituting Opus or an invented work login. A
+creates no new provider destination or Claude account (Royal has no Claude
+work account), so report unavailable GLM rather than substituting Opus or an
+invented work login. A
 rejected transfer stays rejected unless Royal grants that specific destination;
 changing the coordinator or wrapping a tool does not clear it.
 

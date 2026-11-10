@@ -1,17 +1,17 @@
 # Delegation model policy. Rules: delegation-skills/shared/references/model-policy.md
 # Migrated 2026-09-22 from ~/.agents/offload-models.md (kept until you delete it).
 # 2026-10-01: GPT Sol is the default producer, starting at medium effort. Wallet
-# order is work Codex, then personal Codex. Claude personal is exhausted. Backup: model-policy.toml.bak-20261001.
+# order is work Codex, then personal Codex. Backup: model-policy.toml.bak-20261001.
 schema = 2
 # 2026-10-08: schema 2 role names (orchestrator, executor, light, reviewer, premium).
 # Rules: delegation-skills/shared/references/layered-routing.md. Swap a model with the model-swap skill.
 
 [roles]
 mode = "architect"
-orchestrator = "claude/opus"         # the main agent; reads intent, designs, reviews, integrates
+orchestrator = "claude/fable"        # the main agent; reads intent, designs, reviews, integrates (Royal, 2026-11-09: Fable 5.2 plans and orchestrates other models)
 executor = ["gpt/sol@medium"]        # closed contracts; raise effort one level per miss, to xhigh
 light = "gpt/terra@low"              # recon and one-shot mechanical edits; Harbor D066 (2026-11-05 scout benchmark) picked Terra; fast mode dropped 2026-11-07 (Royal: measurements say avoid fast mode, Claude and GPT priority tier alike)
-# light = "claude/haiku@medium"      # UNCONFIRMED option (2026-10-08): bills the Claude subscription, marked exhausted above
+# light = "claude/haiku@medium"      # UNCONFIRMED option (2026-10-08): bills the Claude subscription
 reviewer = "glm/flash"               # company LiteLLM review grant, 2026-10-05; parent reviews deliverables too
 premium = "claude/opus"              # judges, never types: cross-family review of GPT-authored work (2026-11-07, token-spend routing), so Claude keeps review when orchestrator moves to GPT
 
