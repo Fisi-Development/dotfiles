@@ -9,6 +9,7 @@ schema = 2
 [roles]
 mode = "architect"
 orchestrator = "claude/fable"        # the main agent; reads intent, designs, reviews, integrates (Royal, 2026-11-09: Fable 5.2 plans and orchestrates other models)
+captain = "claude/opus@medium"      # bosun captains, Auspex/Lookout overseers: coordinators, not orchestrators (Royal, 2026-11-10: captains stay on Opus medium when orchestrator moved to Fable)
 executor = ["gpt/sol@medium"]        # closed contracts; raise effort one level per miss, to xhigh
 light = "gpt/terra@low"              # recon and one-shot mechanical edits; Harbor D066 (2026-11-05 scout benchmark) picked Terra; fast mode dropped 2026-11-07 (Royal: measurements say avoid fast mode, Claude and GPT priority tier alike)
 # light = "claude/haiku@medium"      # UNCONFIRMED option (2026-10-08): bills the Claude subscription
