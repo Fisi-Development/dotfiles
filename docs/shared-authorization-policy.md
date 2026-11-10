@@ -107,8 +107,7 @@ Verify effective Codex `config/read` and `configRequirements/read`, Claude
 metadata. Hash loaded policy text. Verify actual fresh parent/child instruction
 loading separately. Semantic model checks with inert requests are separate from
 config validation; do not call either a production classifier verdict. Never
-execute negative-control requests. Claude model probes remain unavailable while
-the personal subscription is exhausted.
+execute negative-control requests.
 
 References: [Codex config](https://learn.chatgpt.com/docs/config-file/config-reference),
 [Claude auto mode](https://code.claude.com/docs/en/auto-mode-config),
