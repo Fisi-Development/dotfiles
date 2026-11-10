@@ -104,8 +104,11 @@ AppData/Local/pnpm
 # Go reads ~/.config/go/env only on Linux. There GOTMPDIR moves go's work dirs and link
 # output off /tmp, a small tmpfs with a per-user quota on burnbutu; Harbor's janitor
 # sweeps stale entries in ~/.cache/harbor-build/tmp (docs/runbooks/janitor.md).
+# ~/.cache and that folder are private on Linux (private_dot_cache): @swc/core
+# refuses a cache root with a group-writable ancestor, and burnbutu's umask 0002
+# left them 775. Other hosts keep their own ~/.cache mode.
 .config/go
-.cache/harbor-build
+.cache
 # systemd user environment: TMPDIR on disk too, since cmd/link puts its cgo
 # go-link-* folder under TMPDIR, not GOTMPDIR. Linux only (systemd).
 .config/environment.d
