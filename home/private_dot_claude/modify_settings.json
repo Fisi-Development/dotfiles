@@ -199,6 +199,56 @@
 {{-   $_ := set $settings "hooks" $fsHooks -}}
 {{- end -}}
 {{- /*
+  Added 2026-11-11: skill-router's library steer (skills/skill-router,
+  library.toml). One script on SessionStart (the library card),
+  UserPromptSubmit (trigger phrases such as "tell me when CI finishes") and
+  PreToolUse (sleep loops, --watch polls, Monitor, ScheduleWakeup, plain ssh
+  to a mesh host, transcript greps). It only adds context and never blocks.
+  Present only while the skill is linked on this host. An existing entry keeps
+  its place and gets the current command; a missing one is appended. Same
+  block in home/private_dot_claude-hub-personal/modify_private_settings.json.
+*/ -}}
+{{- $lsScript := printf "%s/.agents/skills/skill-router/scripts/library_steer.py" $home -}}
+{{- $lsCmd := printf "%s \"%s\" hook claude" (ternary "python" "python3" (eq .chezmoi.os "windows")) $lsScript -}}
+{{- $lsHooks := dict -}}
+{{- if hasKey $settings "hooks" -}}
+{{-   $lsHooks = index $settings "hooks" -}}
+{{- end -}}
+{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "PreToolUse" "^(Bash|PowerShell|Monitor|ScheduleWakeup|Read|Grep|Glob|mcp__t3-code__task_status)$" -}}
+{{- $lsPresent := stat $lsScript -}}
+{{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" -}}
+{{-   $lsEntry := dict "matcher" (index $lsMatchers $event) "hooks" (list (dict "type" "command" "command" $lsCmd "timeout" 10)) -}}
+{{-   $kept := list -}}
+{{-   $placed := false -}}
+{{-   if hasKey $lsHooks $event -}}
+{{-     range $group := index $lsHooks $event -}}
+{{-       $mine := false -}}
+{{-       range $h := (index $group "hooks") -}}
+{{-         if contains "skill-router/scripts/library_steer.py" (index $h "command" | default "") -}}
+{{-           $mine = true -}}
+{{-         end -}}
+{{-       end -}}
+{{-       if not $mine -}}
+{{-         $kept = append $kept $group -}}
+{{-       else if and $lsPresent (not $placed) -}}
+{{-         $placed = true -}}
+{{-         $kept = append $kept $lsEntry -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if and $lsPresent (not $placed) -}}
+{{-     $kept = append $kept $lsEntry -}}
+{{-   end -}}
+{{-   if $kept -}}
+{{-     $_ := set $lsHooks $event $kept -}}
+{{-   else if hasKey $lsHooks $event -}}
+{{-     $_ := unset $lsHooks $event -}}
+{{-   end -}}
+{{- end -}}
+{{- if $lsHooks -}}
+{{-   $_ := set $settings "hooks" $lsHooks -}}
+{{- end -}}
+{{- /*
   Added 2026-10-29 (skill visibility audit): the AWS agent skills installed on
   2026-10-19 carry about 18,000 of the 36,000 description characters in Claude
   Code's skill listing, which pushed Royal's own skills (own-tools-sync,

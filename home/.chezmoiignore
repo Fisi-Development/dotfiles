@@ -99,6 +99,10 @@ AppData/Local/pnpm
 # The full-send OpenCode plugin link waits until the skill is linked here.
 .config/opencode/plugins/full-send.js
 {{ end }}
+{{ if not (stat (joinPath .chezmoi.homeDir ".agents" "skills" "skill-router" "plugins" "opencode" "library-steer.js")) }}
+# skill-router's library steer plugin link waits until the skill ships it here.
+.config/opencode/plugins/library-steer.js
+{{ end }}
 
 {{ if ne .chezmoi.os "linux" }}
 # Go reads ~/.config/go/env only on Linux. There GOTMPDIR moves go's work dirs and link
