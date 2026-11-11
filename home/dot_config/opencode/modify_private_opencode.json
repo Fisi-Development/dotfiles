@@ -8,13 +8,14 @@
   desktop still uses (providers.litellm.settings.baseURL). A host without the
   provider, or one that already lists the model, gets its file back byte for
   byte; otherwise the file is rewritten as pretty JSON with sorted keys.
+  Comments are accepted on read (fromJsonc) and dropped by that rewrite.
 */ -}}
 {{- $gateway := "https://litellm-dev.infinituspay.com/v1" -}}
 {{- $model := "accounts/fireworks/routers/firerouter" -}}
 {{- $changed := false -}}
 {{- $doc := dict -}}
 {{- if trim .chezmoi.stdin -}}
-{{-   $doc = fromJson .chezmoi.stdin -}}
+{{-   $doc = fromJsonc .chezmoi.stdin -}}
 {{- end -}}
 {{- range $pair := list (list "provider" "options" (dict "name" "FireRouter" "tool_call" true)) (list "providers" "settings" (dict "name" "FireRouter" "modelID" $model)) -}}
 {{-   $top := index $pair 0 -}}
