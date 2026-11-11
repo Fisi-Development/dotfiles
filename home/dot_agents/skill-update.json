@@ -1,0 +1,22 @@
+{
+  "watch_new": [
+    "mattpocock/skills",
+    "pronskiy/skills",
+    "cloudflare/security-audit-skill"
+  ],
+  "ignore_new": [
+    "writing-beats",
+    "writing-fragments",
+    "writing-shape",
+    "setup-ts-deep-modules",
+    "git-guardrails-claude-code",
+    "migrate-to-shoehorn",
+    "scaffold-exercises",
+    "setup-pre-commit",
+    "pr"
+  ],
+  "ignore_deleted": [
+    "comment-cleanup",
+    "resolving-merge-conflicts"
+  ]
+}
