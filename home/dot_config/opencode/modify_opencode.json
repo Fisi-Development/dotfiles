@@ -1,0 +1,48 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  OpenCode owns this file (Telepathica, Lore and agent installers write it), so
+  this only adds the FireRouter model to the company LiteLLM provider when the
+  host already has that provider (authorization-policy.md, "Authorized company
+  GLM review", FireRouter paragraph, Royal 2026-11-10). It reads both the
+  current schema (provider.litellm.options.baseURL) and the older one the
+  desktop still uses (providers.litellm.settings.baseURL). A host without the
+  provider, or one that already lists the model, gets its file back byte for
+  byte; otherwise the file is rewritten as pretty JSON with sorted keys.
+*/ -}}
+{{- $gateway := "https://litellm-dev.infinituspay.com/v1" -}}
+{{- $model := "accounts/fireworks/routers/firerouter" -}}
+{{- $changed := false -}}
+{{- $doc := dict -}}
+{{- if trim .chezmoi.stdin -}}
+{{-   $doc = fromJson .chezmoi.stdin -}}
+{{- end -}}
+{{- range $pair := list (list "provider" "options" (dict "name" "FireRouter" "tool_call" true)) (list "providers" "settings" (dict "name" "FireRouter" "modelID" $model)) -}}
+{{-   $top := index $pair 0 -}}
+{{-   $optKey := index $pair 1 -}}
+{{-   if hasKey $doc $top -}}
+{{-     $providers := index $doc $top -}}
+{{-     if and (kindIs "map" $providers) (hasKey $providers "litellm") -}}
+{{-       $p := index $providers "litellm" -}}
+{{-       $opts := dict -}}
+{{-       if and (kindIs "map" $p) (hasKey $p $optKey) -}}
+{{-         $opts = index $p $optKey -}}
+{{-       end -}}
+{{-       if and (kindIs "map" $opts) (eq (trimSuffix "/" (toString (index $opts "baseURL"))) $gateway) -}}
+{{-         $models := dict -}}
+{{-         if hasKey $p "models" -}}
+{{-           $models = index $p "models" -}}
+{{-         end -}}
+{{-         if not (hasKey $models $model) -}}
+{{-           $_ := set $models $model (index $pair 2) -}}
+{{-           $_ := set $p "models" $models -}}
+{{-           $changed = true -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- if $changed -}}
+{{ toPrettyJson $doc }}
+{{ else -}}
+{{ .chezmoi.stdin }}
+{{- end -}}

@@ -85,6 +85,13 @@ Report the actual executor and model. GPT implementation or coordination does
 not constitute independent GLM review. Existing authorized Codex subscription
 implementation routes retain their previous scope.
 
+Royal, 2026-11-10: the same grant covers FireRouter through the same gateway,
+pinned to litellm/accounts/fireworks/routers/firerouter, for read-only
+scouting, recon and swarm reading (the `scout` role in
+`~/.agents/model-policy.toml`). FireRouter does not report which model answered
+a call; that is accepted. It never writes deliverables alone, and the payload
+limits below apply to it unchanged.
+
 The grant excludes credentials, secret values, real PII, production data and
 access-granting share links; the configured client may use existing credentials
 to authenticate without printing, committing or embedding them in prompts or
