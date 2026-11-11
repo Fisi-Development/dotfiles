@@ -12,8 +12,8 @@ notify = [ "C:\\Users\\gwmai\\AppData\\Local\\OpenAI\\Codex\\runtimes\\cua_node\
 max_threads = 20
 
 [mcp_servers.hermes-tools]
-command = 'C:\Users\gwmai\AppData\Local\hermes\hermes-agent\venv\Scripts\python.exe'
-args = ["-P", "-m", "agent.transports.hermes_tools_mcp_server"]
+command = 'C:\Users\gwmai\AppData\Local\hermes\bin\hermes.exe'
+args = ["--run-module", "agent.transports.hermes_tools_mcp_server"]
 startup_timeout_sec = 30.0
 tool_timeout_sec = 600.0
 
