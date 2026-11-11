@@ -10,10 +10,11 @@ schema = 2
 mode = "architect"
 orchestrator = "claude/fable"        # the main agent; reads intent, designs, reviews, integrates (Royal, 2026-11-09: Fable 5.2 plans and orchestrates other models)
 captain = "claude/opus@medium"      # bosun captains, Auspex/Lookout overseers: coordinators, not orchestrators (Royal, 2026-11-10: captains stay on Opus medium when orchestrator moved to Fable)
-executor = ["gpt/sol@medium"]        # closed contracts; raise effort one level per miss, to xhigh
+executor = ["firerouter/router"]     # closed contracts; FireRouter as a trial (Royal, 2026-11-10); every FireRouter diff gets an Opus review pass (delegate.py --review --author firerouter --role premium)
+hard_start = "gpt/sol@medium"        # a FireRouter miss, or a unit the parent judges hard, goes to --role hard_start; raise effort one level per further miss, to xhigh
 light = "gpt/terra@low"              # recon and one-shot mechanical edits; Harbor D066 (2026-11-05 scout benchmark) picked Terra; fast mode dropped 2026-11-07 (Royal: measurements say avoid fast mode, Claude and GPT priority tier alike)
 # light = "claude/haiku@medium"      # UNCONFIRMED option (2026-10-08): bills the Claude subscription
-scout = "firerouter/router"          # wide read-only scout fan-outs (3+ at once); Harbor research 2026-11-10 scout-bench-opencode: 38.5 and 37 of 40 blind, every verdict right; never a lone writer (Royal, 2026-11-10)
+scout = "firerouter/router"          # wide read-only scout fan-outs (3+ at once); Harbor research 2026-11-10 scout-bench-opencode: 38.5 and 37 of 40 blind, every verdict right (Royal, 2026-11-10)
 reviewer = "glm/flash"               # company LiteLLM review grant, 2026-10-05; parent reviews deliverables too
 premium = "claude/opus"              # judges, never types: cross-family review of GPT-authored work (2026-11-07, token-spend routing), so Claude keeps review when orchestrator moves to GPT
 
@@ -33,7 +34,7 @@ codex_home = "~/.codex"              # personal ChatGPT login
 [wallets.claude]
 kind = "subscription"
 
-[wallets.company-litellm]             # company gateway verified 2026-10-05; GLM review and FireRouter scout grants only
+[wallets.company-litellm]             # company gateway verified 2026-10-05; GLM review and FireRouter scout/executor grants only
 kind = "metered"
 
 # GPT: CLI through codex exec, work login first, then personal. Native in Codex.
@@ -87,8 +88,9 @@ harness = "opencode"
 provider = "litellm"
 wallet = "company-litellm"
 
-# FireRouter: the same company gateway and payload scope as GLM, read-only
-# scouting and swarm reading (authorization-policy.md, Royal 2026-11-10).
+# FireRouter: the same company gateway and payload scope as GLM; scouting,
+# swarm reading and executor units with an Opus review pass (authorization-policy.md,
+# Royal 2026-11-10).
 [[routes]]
 family = "firerouter"
 via = "native"
