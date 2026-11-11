@@ -5,7 +5,8 @@
   Codex owns hooks.json (Telepathica, run-meter and Lore installers write it),
   so this passes every entry through and only adds or removes the full-send
   skill's `.stop` hook (skills/full-send, references/stop.md) on
-  UserPromptSubmit, PreToolUse and Stop. Codex keys hook trust by position, so
+  UserPromptSubmit, PreToolUse and Stop, and skill-router's library steer on
+  SessionStart, UserPromptSubmit and PreToolUse. Codex keys hook trust by position, so
   an existing entry keeps its place (only its content is refreshed) and a
   missing one is appended. Telepathica's installer moves its own entries to the
   end; if this template also moved ours, the two would leapfrog and every swap
@@ -57,6 +58,51 @@
 {{-   if and $present (not $placed) -}}
 {{-     $changed = true -}}
 {{-     $kept = append $kept $entry -}}
+{{-   end -}}
+{{-   if $kept -}}
+{{-     $_ := set $hooks $event $kept -}}
+{{-   else if hasKey $hooks $event -}}
+{{-     $_ := unset $hooks $event -}}
+{{-   end -}}
+{{- end -}}
+{{- /*
+  Added 2026-11-11: skill-router's library steer (skills/skill-router,
+  library.toml) on SessionStart, UserPromptSubmit and PreToolUse (shell calls
+  only). It only adds context. Same position rules as the full-send entry above;
+  Harbor's tools/codex_hook_trust.py records its trust on rollout.
+*/ -}}
+{{- $lsScript := printf "%s/.agents/skills/skill-router/scripts/library_steer.py" $home -}}
+{{- $lsCmd := printf "%s \"%s\" hook codex" (ternary "python" "python3" (eq .chezmoi.os "windows")) $lsScript -}}
+{{- $lsPresent := stat $lsScript -}}
+{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "PreToolUse" "^(Bash|PowerShell|exec_command|shell|shell_command|local_shell|unified_exec)$" -}}
+{{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" -}}
+{{-   $lsEntry := dict "matcher" (index $lsMatchers $event) "hooks" (list (dict "type" "command" "command" $lsCmd "timeout" 10)) -}}
+{{-   $kept := list -}}
+{{-   $placed := false -}}
+{{-   if hasKey $hooks $event -}}
+{{-     range $group := index $hooks $event -}}
+{{-       $mine := false -}}
+{{-       range $h := (index $group "hooks") -}}
+{{-         if contains "skill-router/scripts/library_steer.py" (index $h "command" | default "") -}}
+{{-           $mine = true -}}
+{{-         end -}}
+{{-       end -}}
+{{-       if not $mine -}}
+{{-         $kept = append $kept $group -}}
+{{-       else if and $lsPresent (not $placed) -}}
+{{-         $placed = true -}}
+{{-         if ne (toJson $group) (toJson $lsEntry) -}}
+{{-           $changed = true -}}
+{{-         end -}}
+{{-         $kept = append $kept $lsEntry -}}
+{{-       else -}}
+{{-         $changed = true -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if and $lsPresent (not $placed) -}}
+{{-     $changed = true -}}
+{{-     $kept = append $kept $lsEntry -}}
 {{-   end -}}
 {{-   if $kept -}}
 {{-     $_ := set $hooks $event $kept -}}
