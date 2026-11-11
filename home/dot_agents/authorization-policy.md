@@ -91,7 +91,8 @@ scouting, recon and swarm reading (the `scout` role in
 `~/.agents/model-policy.toml`), and, as a trial, for implementing delegated
 closed contracts as the first `executor` rung. Every diff FireRouter writes gets
 an Opus review pass before the orchestrator accepts it (`delegate.py --review
---author firerouter`); without that review its output is not accepted.
+--author firerouter --role premium`); without that review its output is not
+accepted.
 FireRouter does not report which model answered a call; that is accepted. The
 payload limits below apply to it unchanged.
 
