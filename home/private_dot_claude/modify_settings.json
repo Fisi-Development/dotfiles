@@ -214,7 +214,7 @@
 {{- if hasKey $settings "hooks" -}}
 {{-   $lsHooks = index $settings "hooks" -}}
 {{- end -}}
-{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "PreToolUse" "^(Bash|PowerShell|Monitor|ScheduleWakeup|Read|Grep|Glob|mcp__t3-code__task_status)$" -}}
+{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "PreToolUse" "^(Bash|PowerShell|Monitor|ScheduleWakeup|Read|Grep|Glob|mcp__t3-code__task_status|Agent|Task)$" -}}
 {{- $lsPresent := stat $lsScript -}}
 {{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" -}}
 {{-   $lsEntry := dict "matcher" (index $lsMatchers $event) "hooks" (list (dict "type" "command" "command" $lsCmd "timeout" 10)) -}}
