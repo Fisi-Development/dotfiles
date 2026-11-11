@@ -6,7 +6,7 @@
   so this passes every entry through and only adds or removes the full-send
   skill's `.stop` hook (skills/full-send, references/stop.md) on
   UserPromptSubmit, PreToolUse and Stop, and skill-router's library steer on
-  SessionStart, UserPromptSubmit and PreToolUse. Codex keys hook trust by position, so
+  SessionStart, UserPromptSubmit, PreToolUse and Stop. Codex keys hook trust by position, so
   an existing entry keeps its place (only its content is refreshed) and a
   missing one is appended. Telepathica's installer moves its own entries to the
   end; if this template also moved ours, the two would leapfrog and every swap
@@ -68,14 +68,15 @@
 {{- /*
   Added 2026-11-11: skill-router's library steer (skills/skill-router,
   library.toml) on SessionStart, UserPromptSubmit and PreToolUse (shell calls
-  only). It only adds context. Same position rules as the full-send entry above;
+  only), and on Stop, where it holds a turn end once when the session parks on
+  an Auspex watch its last message does not name (added 2026-11-11). Same position rules as the full-send entry above;
   Harbor's tools/codex_hook_trust.py records its trust on rollout.
 */ -}}
 {{- $lsScript := printf "%s/.agents/skills/skill-router/scripts/library_steer.py" $home -}}
 {{- $lsCmd := printf "%s \"%s\" hook codex" (ternary "python" "python3" (eq .chezmoi.os "windows")) $lsScript -}}
 {{- $lsPresent := stat $lsScript -}}
-{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "PreToolUse" "^(Bash|PowerShell|exec_command|shell|shell_command|local_shell|unified_exec|collaborationspawn_agent)$" -}}
-{{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" -}}
+{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "Stop" "" "PreToolUse" "^(Bash|PowerShell|exec_command|shell|shell_command|local_shell|unified_exec|collaborationspawn_agent)$" -}}
+{{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" "Stop" -}}
 {{-   $lsEntry := dict "matcher" (index $lsMatchers $event) "hooks" (list (dict "type" "command" "command" $lsCmd "timeout" 10)) -}}
 {{-   $kept := list -}}
 {{-   $placed := false -}}
