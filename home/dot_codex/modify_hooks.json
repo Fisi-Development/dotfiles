@@ -74,7 +74,7 @@
 {{- $lsScript := printf "%s/.agents/skills/skill-router/scripts/library_steer.py" $home -}}
 {{- $lsCmd := printf "%s \"%s\" hook codex" (ternary "python" "python3" (eq .chezmoi.os "windows")) $lsScript -}}
 {{- $lsPresent := stat $lsScript -}}
-{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "PreToolUse" "^(Bash|PowerShell|exec_command|shell|shell_command|local_shell|unified_exec)$" -}}
+{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "PreToolUse" "^(Bash|PowerShell|exec_command|shell|shell_command|local_shell|unified_exec|collaborationspawn_agent)$" -}}
 {{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" -}}
 {{-   $lsEntry := dict "matcher" (index $lsMatchers $event) "hooks" (list (dict "type" "command" "command" $lsCmd "timeout" 10)) -}}
 {{-   $kept := list -}}
