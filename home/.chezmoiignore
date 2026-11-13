@@ -87,6 +87,14 @@ install-fish-plugins.sh
 AppData/Local/pnpm
 {{ end }}
 
+{{ if ne .chezmoi.os "windows" }}
+# AppData is a Windows-only tree. Ignoring only AppData/Local/pnpm left its
+# parent dirs managed, so every Linux and macOS apply created an empty
+# ~/AppData/Local and own-tools-sync reported `DA AppData` as drift.
+AppData
+AppData/**
+{{ end }}
+
 {{ if not (stat (joinPath .chezmoi.homeDir ".codex" "hooks.json")) }}
 # Codex hooks.json is Codex's own file; the full-send hook is merged into it
 # only where Codex already wrote one.
