@@ -245,6 +245,72 @@
 {{-     $_ := unset $lsHooks $event -}}
 {{-   end -}}
 {{- end -}}
+{{- /*
+  Added 2026-11-14: Auspex held watches (harbor auspex/src/hold.rs; backlog
+  01M73AKGFT3ZMNR2B8SCBVZ4S2). T3 shows a thread as waiting only while the
+  session has background work marked awaited, and a watch lives in the Auspex
+  daemon, so a thread that opened one looked finished. Three hooks make an
+  ordinary `auspex watch` call hold the watch in a background task with no
+  step by the agent:
+  - PreToolUse (auspex hook claude pre) rewrites a Bash call holding one
+    `auspex watch` to `auspex hold ...`, run in the background;
+  - PostToolUse (auspex hook claude post) tells the agent the watch id;
+  - PostToolUse mcp_tool calls T3's t3_background_wait with the new task id,
+    through the session's own T3 connection; outside T3 there is no t3-code
+    server and Claude skips it.
+  Each command ends in `|| true`: an older auspex without `hook` exits 2,
+  which would block the call, until own-tools-sync installs the new one.
+  The `if` filters fire on any compound command too, which is harmless: the
+  pre hook leaves other calls alone, and t3_background_wait without a task id
+  matches nothing. Present only while an auspex binary is installed. Existing
+  entries are replaced in place, missing ones appended. Same block in
+  home/private_dot_claude-hub-personal/modify_private_settings.json.
+*/ -}}
+{{- $axExe := "" -}}
+{{- range list (printf "%s/.cargo/bin/auspex" $home) (printf "%s/.cargo/bin/auspex.exe" $home) (printf "%s/.local/bin/auspex" $home) (printf "%s/.local/bin/auspex.exe" $home) -}}
+{{-   if and (not $axExe) (stat .) -}}
+{{-     $axExe = . -}}
+{{-   end -}}
+{{- end -}}
+{{- if not $axExe -}}
+{{-   $axExe = lookPath "auspex" | default "" | replace "\\" "/" -}}
+{{- end -}}
+{{- $axEntries := dict -}}
+{{- if $axExe -}}
+{{-   $axCmd := printf "\"%s\" hook claude" $axExe -}}
+{{-   $axPre := dict "matcher" "^Bash$" "hooks" (list (dict "type" "command" "command" (printf "%s pre || true" $axCmd) "if" "Bash(*auspex watch*)" "timeout" 5)) -}}
+{{-   $axWait := dict "type" "mcp_tool" "server" "t3-code" "tool" "t3_background_wait" "input" (dict "taskIds" (list "${tool_response.backgroundTaskId}")) "if" "Bash(*auspex* hold *)" "timeout" 15 -}}
+{{-   $axPost := dict "matcher" "^Bash$" "hooks" (list (dict "type" "command" "command" (printf "%s post || true" $axCmd) "if" "Bash(*auspex* hold *)" "timeout" 10) $axWait) -}}
+{{-   $axEntries = dict "PreToolUse" $axPre "PostToolUse" $axPost -}}
+{{- end -}}
+{{- range $event := list "PreToolUse" "PostToolUse" -}}
+{{-   $kept := list -}}
+{{-   $placed := false -}}
+{{-   if hasKey $lsHooks $event -}}
+{{-     range $group := index $lsHooks $event -}}
+{{-       $mine := false -}}
+{{-       range $h := (index $group "hooks") -}}
+{{-         if or (and (contains "auspex" (index $h "command" | default "")) (contains "hook claude" (index $h "command" | default ""))) (eq (index $h "tool" | default "") "t3_background_wait") -}}
+{{-           $mine = true -}}
+{{-         end -}}
+{{-       end -}}
+{{-       if not $mine -}}
+{{-         $kept = append $kept $group -}}
+{{-       else if and (hasKey $axEntries $event) (not $placed) -}}
+{{-         $placed = true -}}
+{{-         $kept = append $kept (index $axEntries $event) -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if and (hasKey $axEntries $event) (not $placed) -}}
+{{-     $kept = append $kept (index $axEntries $event) -}}
+{{-   end -}}
+{{-   if $kept -}}
+{{-     $_ := set $lsHooks $event $kept -}}
+{{-   else if hasKey $lsHooks $event -}}
+{{-     $_ := unset $lsHooks $event -}}
+{{-   end -}}
+{{- end -}}
 {{- if $lsHooks -}}
 {{-   $_ := set $settings "hooks" $lsHooks -}}
 {{- end -}}
