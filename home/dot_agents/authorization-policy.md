@@ -111,10 +111,13 @@ changing the coordinator or wrapping a tool does not clear it.
 
 Authorization remains scoped to its project and task. In infinituspay-meta's
 authorized demo lanes, own-branch pushes, Linear comments, opening/updating own
-MRs, and full review loops are authorized. Own ip-be MRs may self-approve and
-merge only after the clean review loop and required CODEOWNERS/cross-pod review
-are satisfied. ip-gitops merges, dev data writes, and dev secret writes require
-separate go requests. This policy grants no production actions or unrelated
+MRs, and full review loops are authorized. Own ip-be and ip-fe MRs may
+self-approve and merge only after the clean review loop and required
+CODEOWNERS/cross-pod review are satisfied (ip-fe since 2026-11-14). An ip-gitops
+merge that only pins Royal's own merged work to dev is authorized when the claim
+the work was for is filmed on the live dev site straight after, and the pin is
+reverted if that film fails (2026-11-14). Every other ip-gitops merge, dev data
+writes, and dev secret writes require separate go requests. This policy grants no production actions or unrelated
 company deployment or outward communication. Personal-tooling shipping uses its
 existing bounded authorization; company workspace publication keeps its own
 gates. Preserve agent-guard hooks and existing hard deny/ask controls.
