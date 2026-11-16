@@ -113,7 +113,8 @@ Authorization remains scoped to its project and task. In infinituspay-meta's
 authorized demo lanes, own-branch pushes, Linear comments, opening/updating own
 MRs, and full review loops are authorized. Own ip-be and ip-fe MRs may
 self-approve and merge only after the clean review loop and required
-CODEOWNERS/cross-pod review are satisfied (ip-fe since 2026-11-14). An ip-gitops
+CODEOWNERS/cross-pod review are satisfied (ip-fe since 2026-11-14); "All
+Members" is Royal's own approval, and babysit-pr `mr_waits.py` names any other. An ip-gitops
 merge that only pins Royal's own merged work to dev is authorized when the claim
 the work was for is filmed on the live dev site straight after, and the pin is
 reverted if that film fails (2026-11-14). Every other ip-gitops merge, dev data
