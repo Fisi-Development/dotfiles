@@ -66,7 +66,7 @@ chezmoi verify ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/
 
 Use the equivalent home paths in the active host's shell. A broad apply also changes unrelated managed configuration.
 
-OpenCode refreshes global instructions before the next model request. Start a new Codex session to load updated global guidance. Work Codex reads only `## Goal ownership` from `~/AGENTS.md` through its own global AGENTS.md; that section also points to the standing alignment policy for ownership, exploration, steering and workarounds. Its other instructions, configuration, and authentication remain separate. The work file is deployed only where the work home exists, under the existing chezmoi ignore rule.
+OpenCode refreshes global instructions before the next model request. Start a new Codex session to load updated global guidance. Work Codex reads only `## Goal ownership` from `~/AGENTS.md` and the `~/.agents/standing-alignment.md` policy it names, through its own global AGENTS.md. Its other instructions, configuration, and authentication remain separate. The work file is deployed only where the work home exists, under the existing chezmoi ignore rule.
 
 T3 configures `codex` and `codex_work` as separate provider homes. Updating files alone does not establish that a live provider session reloaded them. For an existing thread, provide a scoped refresh directing it to reread the changed Goal ownership section and applicable skill references, then verify its next action. A fresh session must demonstrate both loading and behavior before claiming activation. Repository-specific instructions still apply.
 

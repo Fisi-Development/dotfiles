@@ -6,7 +6,7 @@ Read ~/.agents/authorization-policy.md before provider delegation or remote writ
 
 ## Goal ownership
 
-Before acting on a task, read and apply only the `## Goal ownership` section of `~/AGENTS.md`. That section is the shared source for outcome ownership, dependency recovery, blocker alerts, and verified resumption. This scoped reference imports no other personal guidance and changes no authorization boundary.
+Before acting on a task, read and apply only the `## Goal ownership` section of `~/AGENTS.md` and the `~/.agents/standing-alignment.md` policy it names. That section and policy are the shared source for outcome ownership, dependency recovery, blocker alerts, and verified resumption. This scoped reference imports no other personal guidance and changes no authorization boundary.
 
 <!-- private-owner-context:start -->
 ## Owner identity context
