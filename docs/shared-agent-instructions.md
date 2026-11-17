@@ -17,6 +17,7 @@ To check, run a one-shot session from a folder under home with no CLAUDE.md and 
 | Source entry | Deployed path | Purpose |
 | --- | --- | --- |
 | `home/encrypted_AGENTS.md.age` | `~/AGENTS.md` | Shared working agreement |
+| `home/dot_agents/standing-alignment.md` | `~/.agents/standing-alignment.md` | Standing judgment policy reached from Goal ownership |
 | `home/dot_codex/symlink_AGENTS.md.tmpl` | `~/.codex/AGENTS.md` | Link to the shared agreement |
 | `home/dot_codex-work/AGENTS.md` | `~/.codex-work/AGENTS.md` | Existing authorization pointer plus a scoped reader for the shared Goal ownership section |
 | `home/dot_config/opencode/symlink_AGENTS.md.tmpl` | `~/.config/opencode/AGENTS.md` | Link to the shared agreement |
@@ -57,15 +58,15 @@ Restore the existing age identity before applying encrypted files. Windows also 
 Review and apply only the instruction targets:
 
 ```sh
-chezmoi diff ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
-chezmoi apply --parent-dirs --dry-run --verbose ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
-chezmoi apply --parent-dirs ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
-chezmoi verify ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
+chezmoi diff ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
+chezmoi apply --parent-dirs --dry-run --verbose ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
+chezmoi apply --parent-dirs ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
+chezmoi verify ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
 ```
 
 Use the equivalent home paths in the active host's shell. A broad apply also changes unrelated managed configuration.
 
-OpenCode refreshes global instructions before the next model request. Start a new Codex session to load updated global guidance. Work Codex reads only `## Goal ownership` from `~/AGENTS.md` through its own global AGENTS.md; its other instructions, configuration, and authentication remain separate. The work file is deployed only where the work home exists, under the existing chezmoi ignore rule.
+OpenCode refreshes global instructions before the next model request. Start a new Codex session to load updated global guidance. Work Codex reads only `## Goal ownership` from `~/AGENTS.md` through its own global AGENTS.md; that section also points to the standing alignment policy for ownership, exploration, steering and workarounds. Its other instructions, configuration, and authentication remain separate. The work file is deployed only where the work home exists, under the existing chezmoi ignore rule.
 
 T3 configures `codex` and `codex_work` as separate provider homes. Updating files alone does not establish that a live provider session reloaded them. For an existing thread, provide a scoped refresh directing it to reread the changed Goal ownership section and applicable skill references, then verify its next action. A fresh session must demonstrate both loading and behavior before claiming activation. Repository-specific instructions still apply.
 
