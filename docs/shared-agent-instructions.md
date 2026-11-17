@@ -58,10 +58,10 @@ Restore the existing age identity before applying encrypted files. Windows also 
 Review and apply only the instruction targets:
 
 ```sh
-chezmoi diff ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
-chezmoi apply --parent-dirs --dry-run --verbose ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
-chezmoi apply --parent-dirs ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
-chezmoi verify ~/AGENTS.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
+chezmoi diff ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
+chezmoi apply --parent-dirs --dry-run --verbose ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
+chezmoi apply --parent-dirs ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
+chezmoi verify ~/AGENTS.md ~/.agents/standing-alignment.md ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.claude/CLAUDE.md
 ```
 
 Use the equivalent home paths in the active host's shell. A broad apply also changes unrelated managed configuration.
