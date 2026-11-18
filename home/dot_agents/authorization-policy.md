@@ -1,6 +1,6 @@
 # Royal's shared authorization policy
 
-Policy revision: 2026-11-17. Apply alongside harness safety policy and the current
+Policy revision: 2026-11-18. Apply alongside harness safety policy and the current
 project's action gates. Evaluate the requested action, payload, destination,
 executor, account, and project separately. Credentials or a configured provider
 alone grant no permission. Task authorization does not change runtime access.
@@ -65,10 +65,6 @@ Only these go to Royal:
 - a product decision the request, the code and the project records cannot
   settle.
 
-A status question, a review or a diagnosis that turns up a needed fix is not a
-reason to stop and offer. Report the fix and make it, unless Royal scoped the
-task read-only.
-
 Grants Royal recorded in Harbor `docs/authorizations.md` hold within their
 stated scope.
 
@@ -111,16 +107,22 @@ changing the coordinator or wrapping a tool does not clear it.
 
 Authorization remains scoped to its project and task. In infinituspay-meta's
 authorized demo lanes, own-branch pushes, Linear comments, opening/updating own
-MRs, and full review loops are authorized. Own ip-be and ip-fe MRs may
-self-approve and merge only after the clean review loop and required
-CODEOWNERS/cross-pod review are satisfied (ip-fe since 2026-11-14); "All
-Members" is Royal's own approval, and babysit-pr `mr_waits.py` names any other. An ip-gitops
+MRs, and full review loops are authorized. Own ip-be, ip-fe and apcx-pods MRs
+may self-approve and merge once the review loop is clean and every other
+required approval (CODEOWNERS, cross-pod, any rule) is met (ip-fe since 2026-11-14; apcx-pods
+since 2026-11-18, Mark: "yes merge 354 and why are you waiting on me for a one
+word fix?", scope as read by the advisor thread (claude:7131c0c5@burnbutu);
+Mark may narrow it). A merge grant never covers content: an MR stating a
+decision Royal reserved as decided (a fee number, the FX freeze choice, the
+load or the work split among people) needs his words first. Other
+company repos and others' branches and MRs keep their gates. "All Members" is Royal's own
+approval; `mr_waits.py` must show no other owed and no hold. An ip-gitops
 merge that only pins Royal's own merged work to dev is authorized when the claim
 the work was for is filmed on the live dev site straight after, and the pin is
 reverted if that film fails (2026-11-14). Every other ip-gitops merge, dev data
 writes, and dev secret writes require separate go requests; retrying a failed
 default-branch pipeline or job, twice per failure at most, does not
-(2026-11-17, infinituspay-meta AGENTS.md). This policy grants no production actions or unrelated
+(2026-11-17). This policy grants no production actions or unrelated
 company deployment or outward communication. Personal-tooling shipping uses its
 existing bounded authorization; company workspace publication keeps its own
 gates. Preserve agent-guard hooks and existing hard deny/ask controls.
@@ -129,9 +131,7 @@ Teammates' work in infinituspay-meta (Pods 3 and 4). Royal's agents may take
 over, reassign, re-scope, split, merge as duplicates, reopen and close Linear
 tickets that Moiz Ahmed or Nick Saponaro own, and comment on them, without a
 heads-up or a prior check; their agents hold the same grant over Royal's (Mark
-Aiken's). Tag an owner only when they owe an answer or a decision; do not route
-a ticket move, a status change or a duplicate merge through Nick, Moiz or
-Illia first. On a live collision, where the owner's agent is working the same
+Aiken's). On a live collision, where the owner's agent is working the same
 ticket, branch or MR right now, back off, leave a comment, and take the next
 item. The grant covers Linear and Royal's own branches and MRs. It does not
 cover pushing to another person's branch, merging another person's MR, Slack
@@ -143,11 +143,9 @@ by other teams, keeps the normal path.
 Royal's own GitHub repositories live under the user account github.com/royalaid
 and the organization github.com/Fisi-Development, where Royal is an admin.
 Repositories that moved from royalaid to Fisi-Development are still Royal's
-own (the list is in Harbor `docs/authorizations.md`); their royalaid URLs
-redirect. A grant, standing authorization or Rollout step that names a royalaid
+own (the list is in Harbor `docs/authorizations.md`). A grant, standing authorization or Rollout step that names a royalaid
 repository, or Royal's own repositories in general, covers the same repository
-under Fisi-Development; moving a repository between the two owners changes
-nothing.
+under Fisi-Development.
 
 When the task calls for it, in these repositories: push commits without force
 to the agent's own branches, and to the default branch where the repository's
