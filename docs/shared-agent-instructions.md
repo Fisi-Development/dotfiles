@@ -27,7 +27,7 @@ The symlink templates use `.chezmoi.homeDir`, so they resolve against each machi
 
 ## Size limits
 
-Every session loads the agreement, so it has a size limit Royal set on 7 Nov 2026: 20 KB for `~/AGENTS.md`, 17 KB for the authorization policy (which only the classifiers load in full) and 16 KB for a repository `AGENTS.md`. `tests/test_context_budget.py` fails when a source crosses one, naming the file and its size; it reads the encrypted agreement's length from its age framing, without the key. Move a dated incident or tool recipe to the skill, runbook or decision that owns the topic and leave a one-line pointer, rather than raising a limit (Harbor `meta/plans/2026-11-07-always-loaded-demotion.md` has the moves made so far).
+Every session loads the agreement, so it has a size limit Royal set on 7 Nov 2026: 20 KB for `~/AGENTS.md`, 17 KB for the authorization policy (which only the classifiers load in full) and 16 KB for a repository `AGENTS.md`. `tests/test_context_budget.py` fails when a source crosses one, naming the file and its size, and when the policy is within 500 bytes of its limit; it reads the encrypted agreement's length from its age framing, without the key. Move a dated incident or tool recipe to the skill, runbook or decision that owns the topic and leave a one-line pointer, rather than raising a limit (Harbor `meta/plans/2026-11-07-always-loaded-demotion.md` has the moves made so far).
 
 ## Fleet memory
 

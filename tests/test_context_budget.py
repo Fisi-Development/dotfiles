@@ -9,6 +9,11 @@ files and the fleet memory digest with the same limits (config/context-budget.js
 The agreement is stored age-encrypted. Its plaintext length follows from the age
 framing alone (header, 16-byte nonce, 64 KiB chunks each with a 16-byte tag), so the
 check needs no key.
+
+The authorization policy also keeps headroom: the check fails once it is within
+HEADROOM bytes of its limit, so the next rule never has to displace another one.
+Royal's rule (18 Nov 2026): an addition that does not fit is made by moving
+explanation to authorization-policy-notes.md, never by cutting a rule.
 """
 import base64
 import pathlib
@@ -25,6 +30,8 @@ LIMITS = [
     ('authorization policy', 'home/dot_agents/authorization-policy.md', 17000),
     ('repository AGENTS.md', 'AGENTS.md', 16000),
 ]
+POLICY = 'home/dot_agents/authorization-policy.md'
+HEADROOM = 500
 
 
 def age_plaintext_size(data):
@@ -53,6 +60,15 @@ def over_limit(limits=LIMITS, root=ROOT):
             for name, rel, limit in limits if measure(root / rel) > limit]
 
 
+def short_of_headroom(limits=LIMITS, root=ROOT, rel=POLICY, headroom=HEADROOM):
+    limit = next(limit for _, path, limit in limits if path == rel)
+    size = measure(root / rel)
+    if size <= limit - headroom:
+        return None
+    return (f'{rel} is {size:,} bytes, within {headroom} of its {limit:,}-byte limit: '
+            'move explanation to the notes file; do not cut a rule')
+
+
 def fake_age(plaintext_size, armored=True):
     header = b'age-encryption.org/v1\n-> X25519 c3RhbnphCg\nYm9keQ\n--- bWFj\n'
     chunks = max(1, -(-plaintext_size // CHUNK))
@@ -67,6 +83,21 @@ def fake_age(plaintext_size, armored=True):
 class ContextBudgetTests(unittest.TestCase):
     def test_always_loaded_files_are_within_their_limits(self):
         self.assertEqual(over_limit(), [])
+
+    def test_authorization_policy_keeps_headroom(self):
+        self.assertIsNone(short_of_headroom())
+
+    def test_headroom_check_fails_near_the_limit(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            limits = [('policy', 'p.md', 1000)]
+            (root / 'p.md').write_text('x' * 500)
+            self.assertIsNone(short_of_headroom(limits, root, 'p.md', 500))
+            (root / 'p.md').write_text('x' * 501)
+            found = short_of_headroom(limits, root, 'p.md', 500)
+        self.assertEqual(found, 'p.md is 501 bytes, within 500 of its 1,000-byte limit: '
+                                'move explanation to the notes file; do not cut a rule')
 
     def test_age_size_follows_the_framing(self):
         for size in (0, 1, 26658, CHUNK, CHUNK + 1, 3 * CHUNK + 5):

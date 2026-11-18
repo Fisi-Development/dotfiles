@@ -8,6 +8,14 @@ into existing machine-local settings. Requires Python 3.11 or newer (standard-li
 `python` or `py -3`.
 Use a fresh session after installation. A second preview must have no changes.
 
+`home/dot_agents/authorization-policy-notes.md` is its companion: sources, dates,
+rationale and examples, and no rule. chezmoi deploys it beside the policy, but
+the installer never reads it, so no classifier or harness is fed it. The policy
+has a 17,000-byte limit and must stay at least 500 bytes under it
+(`tests/test_context_budget.py`). An addition that does not fit moves
+explanation from the policy to the notes file; a rule is removed only on
+Royal's word.
+
 The machine-local `~/.agents/authorization-adapter-state.json` records the exact
 Claude entries the installer owns, so regeneration removes only those entries.
 Existing custom arrays without `$defaults` stop for reconciliation instead of
