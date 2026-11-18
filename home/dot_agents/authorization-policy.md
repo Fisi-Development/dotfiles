@@ -1,6 +1,6 @@
 # Royal's shared authorization policy
 
-Policy revision: 2026-11-07. Apply alongside harness safety policy and the current
+Policy revision: 2026-11-17. Apply alongside harness safety policy and the current
 project's action gates. Evaluate the requested action, payload, destination,
 executor, account, and project separately. Credentials or a configured provider
 alone grant no permission. Task authorization does not change runtime access.
@@ -61,7 +61,8 @@ Only these go to Royal:
 - edits to agent-guard, managed settings or the grant key outside a pull request
   and the root updater;
 - the trust verbs named in "Telepathica commands";
-- company gates (see "Project action gates");
+- company gates (see "Project action gates"), except retrying a failed
+  pipeline or job on a company default branch, which that section covers;
 - a product decision the request, the code and the project records cannot
   settle.
 
@@ -122,6 +123,16 @@ writes, and dev secret writes require separate go requests. This policy grants n
 company deployment or outward communication. Personal-tooling shipping uses its
 existing bounded authorization; company workspace publication keeps its own
 gates. Preserve agent-guard hooks and existing hard deny/ask controls.
+
+Retrying a failed default-branch pipeline or job on a company repository
+(gitlab.com/infinituspay1) needs no go (Royal, 17 Nov 2026: "one or two shots
+on goal is fine as a standing policy"). Retry each failure up to two times;
+when both retries fail, stop, read the job log and report. This covers the
+retry only: it grants no fix pushed to the default branch and does not loosen
+the red-release stop (Harbor D087): no merge into a red or stuck default
+branch.
+When a retried job has a known side effect, such as an ip-be main job that
+applies a dev migration, name that side effect in the report.
 
 Teammates' work in infinituspay-meta (Pods 3 and 4). Royal's agents may take
 over, reassign, re-scope, split, merge as duplicates, reopen and close Linear
