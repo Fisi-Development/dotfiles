@@ -52,6 +52,26 @@
 	enabled = true
 	autoupdate = true
 
+# A bare `git push` pushes the current branch to its same-named branch and
+# sets up tracking on first push (Harbor D084).
+[push]
+	default = simple
+	autoSetupRemote = true
+{{- $guard := "" }}
+{{- if eq .chezmoi.os "windows" }}{{ $guard = "C:/Program Files/ClaudeCode/agent-guard/agent-guard.exe" }}
+{{- else if eq .chezmoi.os "darwin" }}{{ $guard = "/Library/Application Support/ClaudeCode/agent-guard/agent-guard" }}
+{{- else }}{{ $guard = "/etc/claude-code/agent-guard/agent-guard" }}{{ end }}
+{{- if stat $guard }}
+
+# agent-guard judges an agent's push here, on the URL and refs git resolved
+# (Harbor D084; agent-guard SKILL.md, "Pushes are checked at Git's pre-push
+# hook"). A config hook runs beside each repository's own hooks; it needs Git
+# 2.54+. agent-guard refuses an agent push while this hook is switched off.
+[hook "agentguard"]
+	event = pre-push
+	command = "\"{{ $guard }}\" pre-push"
+{{- end }}
+
 # Machine-local git settings: credential helpers, per-host identity, and the
 # safe.directory list. `gh auth setup-git` writes its helper blocks to the
 # global config, and safe.directory accumulates per machine, so without this
