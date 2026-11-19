@@ -71,6 +71,16 @@ On every host, T3 shows the hub instances as **Codex** (`codex_hub_personal`) an
 
 **Usage → Limits** reads pooled quotas from the usage source `burnbutu_hub` on the desktop, Mercury and bouncehouse, and `burnbutu_personal` on burnbutu. Both use `https://burnbutu.royal-burbot.ts.net:8317` and the management key in `~/cliproxyapi/personal/management-key` on burnbutu. T3 moves an inline key into its secret store when it loads settings.
 
+## Model discovery
+
+Codex hub profiles set `model_providers.subscription_hub.model_catalog_url` to
+`https://burnbutu.royal-burbot.ts.net:8317/v1/models`. Codex otherwise falls back
+to its bundled catalog and can omit newer hub models, including GPT 6.2 Sol
+and Astra, even when inference and the hub's model list work. Existing profiles
+need this field added once; the installer preserves existing registered profiles.
+Verify discovery with Codex app-server `model/list` and T3's provider catalog,
+since the hub's OpenAI model list alone does not establish picker visibility.
+
 ## Windows file permissions
 
 Files that Codex created in the hub homes while running from a Harbor mesh session ended up with empty access lists on both Windows hosts. The T3 probe then failed with "failed to initialize sqlite state runtime" or "Access is denied". To fix it, reset every entry under the hub home to inherit the folder's permissions (`icacls <entry> /reset /T /C`), except `config.toml` and `settings.json`, which keep their owner-only access lists.

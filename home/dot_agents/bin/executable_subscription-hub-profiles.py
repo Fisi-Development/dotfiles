@@ -178,7 +178,8 @@ def codex_config(source, url, key):
                 break
     if 'model_provider' not in parsed:
         rendered = replacement + source
-    provider = dict(name='Burnbutu Hub', base_url=url + '/v1', wire_api='responses',
+    provider = dict(name='Burnbutu Hub', base_url=url + '/v1',
+                    model_catalog_url=url + '/v1/models', wire_api='responses',
                     requires_openai_auth=False, supports_websockets=True,
                     experimental_bearer_token=key)
     rendered += '\n[model_providers.subscription_hub]\n'

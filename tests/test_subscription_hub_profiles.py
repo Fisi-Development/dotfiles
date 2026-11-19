@@ -3,6 +3,7 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 
 
@@ -53,6 +54,9 @@ class HubSupportLinkTests(unittest.TestCase):
     def test_fresh_profiles_follow_later_base_changes(self):
         result = self.run_script()
         self.assertEqual(result.returncode, 0, result.stderr)
+        config = tomllib.loads((self.codex_hub / 'config.toml').read_text())
+        self.assertEqual(config['model_providers']['subscription_hub']['model_catalog_url'],
+                         'https://burnbutu.royal-burbot.ts.net:8317/v1/models')
         # Copies would miss every one of these later changes in the base homes.
         self.add_skill('later')
         (self.home / '.claude/CLAUDE.md').write_text('claude v2\n')
