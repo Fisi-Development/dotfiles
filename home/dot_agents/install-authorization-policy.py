@@ -14,17 +14,21 @@ GUARD_PATHS = (
     pathlib.Path(r'C:\Program Files\ClaudeCode\agent-guard\agent-guard.exe'),
     pathlib.Path('/etc/claude-code/agent-guard/agent-guard'),
 )
-# agent-guard gates Claude Code's PreToolUse, Codex's pre_tool_use hook and, through
-# its plugin, OpenCode's tool calls (agent-guard SKILL.md, "Harness coverage"; live
-# probes on every host 2026-10-18), so all three follow the guard check (Royal,
-# 2026-10-18). Codex counts only where its hooks.json registers the guard, OpenCode
-# only where the plugin is installed; elsewhere they get auto.
+# agent-guard gates Claude Code's PreToolUse, Codex's pre_tool_use hook, Antigravity's
+# PreToolUse hook (0.5.101+), and, through its plugin, OpenCode's tool calls (agent-guard
+# SKILL.md; Claude/Codex/OpenCode live probes 2026-10-18), so all four follow the guard
+# check (Royal, 2026-10-18). Codex counts only where its hooks.json registers the guard,
+# OpenCode only where the plugin is installed, and Antigravity only when agent-guard is
+# >= 0.5.101 and every active config directory's hooks.json registers a catch-all command
+# PreToolUse hook for the guard (a newly created T3 profile stays unguarded until rerun);
+# elsewhere they get auto.
 # OpenCode has no auto reviewer: T3 runs an OpenCode session in any mode below
 # full-access by asking Royal before every bash, edit and webfetch call. So OpenCode
 # follows the guard being installed (its version reads) with the plugin in place, not
 # the updater's freshness record (Royal, 2026-11-03), which a host without a root
 # updater or a stale record otherwise turned into hand-approval of every call.
-GUARDED_HARNESSES = ('claude', 'codex', 'opencode')
+GUARDED_HARNESSES = ('claude', 'codex', 'opencode', 'antigravity')
+ANTIGRAVITY_MIN_GUARD = (0, 5, 101)
 OPENCODE_GUARD_PLUGIN = pathlib.Path('.config/opencode/plugins/agent-guard.ts')
 CODEX_GUARD_HOOKS = pathlib.Path('.codex/hooks.json')
 # agent-guard ships as successful main push builds of .github/workflows/agent-guard.yml in
@@ -93,6 +97,42 @@ def codex_hooked(home):
     """Codex counts as guarded only where its hooks.json runs agent-guard."""
     try: return 'agent-guard' in (home/CODEX_GUARD_HOOKS).read_text(encoding='utf-8')
     except (OSError,UnicodeError): return False
+
+def antigravity_hooks_has_guard(path):
+    try: data=json.loads(path.read_text(encoding='utf-8'))
+    except (OSError,UnicodeError,ValueError): return False
+    if not isinstance(data,dict): return False
+    for cfg in data.values():
+        if not isinstance(cfg,dict): continue
+        enabled=cfg.get('enabled',True)
+        if enabled is False or (isinstance(enabled,str) and enabled.strip().lower()=='false'): continue
+        groups=cfg.get('PreToolUse')
+        if not isinstance(groups,list): continue
+        for group in groups:
+            if not isinstance(group,dict): continue
+            matcher=group.get('matcher','*')
+            if matcher not in ('*','','.*'): continue
+            hooks=group.get('hooks')
+            if not isinstance(hooks,list): continue
+            for h in hooks:
+                if not isinstance(h,dict) or h.get('type')!='command': continue
+                cmd=str(h.get('command','')).strip()
+                if cmd.startswith('"') and cmd.endswith('"'): cmd=cmd[1:-1].strip()
+                exe=os.path.basename(cmd.replace('\\','/')).lower()
+                if exe in ('agent-guard','agent-guard.exe'): return True
+    return False
+
+def version_tuple(text):
+    match=re.fullmatch(r'(\d+)\.(\d+)\.(\d+)',str(text or ''))
+    return tuple(map(int,match.groups())) if match else None
+
+def antigravity_hooked(home, guard):
+    """Antigravity counts as guarded only with agent-guard >= 0.5.101 and catch-all PreToolUse hooks in every active config dir."""
+    installed=version_tuple(guard.get('installed'))
+    if installed is None or installed<ANTIGRAVITY_MIN_GUARD: return False
+    targets=[p/'hooks.json' for p in sorted((home/'.t3/userdata/providers/antigravity').glob('*/config')) if p.is_dir()]
+    if (home/'.gemini/config').is_dir(): targets.append(home/'.gemini/config/hooks.json')
+    return bool(targets) and all(antigravity_hooks_has_guard(p) for p in targets)
 
 def remove_block(text, start, end):
     if start not in text and end not in text: return text
@@ -202,7 +242,8 @@ def main():
         before=dict(before) if before is not None else None
         for harness in GUARDED_HARNESSES:
             plugged={'opencode':lambda:(home/OPENCODE_GUARD_PLUGIN).exists(),
-                     'codex':lambda:codex_hooked(home)}.get(harness,lambda:True)()
+                     'codex':lambda:codex_hooked(home),
+                     'antigravity':lambda:antigravity_hooked(home,guard)}.get(harness,lambda:True)()
             modes[harness]=(opencode_mode if harness=='opencode' else mode) if plugged else 'auto'
         generated=json.dumps(d,indent=2)
         if '\r\n' in old: generated=generated.replace('\n','\r\n')

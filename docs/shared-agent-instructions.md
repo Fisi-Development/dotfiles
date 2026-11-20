@@ -21,6 +21,7 @@ To check, run a one-shot session from a folder under home with no CLAUDE.md and 
 | `home/dot_codex/symlink_AGENTS.md.tmpl` | `~/.codex/AGENTS.md` | Link to the shared agreement |
 | `home/dot_codex-work/AGENTS.md` | `~/.codex-work/AGENTS.md` | Existing authorization pointer plus a scoped reader for the shared Goal ownership section |
 | `home/dot_config/opencode/symlink_AGENTS.md.tmpl` | `~/.config/opencode/AGENTS.md` | Link to the shared agreement |
+| `home/dot_gemini/symlink_AGENTS.md.tmpl` | `~/.gemini/AGENTS.md` | Link to the shared agreement for Antigravity (paired with `GEMINI.md` fleet memory) |
 | `home/private_dot_claude/encrypted_CLAUDE.md.age` | `~/.claude/CLAUDE.md` | Shared import and Claude-specific notes |
 
 The symlink templates use `.chezmoi.homeDir`, so they resolve against each machine's home directory. Changes to the live agreement reach both symlinks immediately, but chezmoi stores a snapshot until the next `add`.
