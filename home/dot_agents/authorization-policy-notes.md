@@ -35,8 +35,8 @@ they were restored; the fifth, a citation, is under "Project action gates".
 - A GPT coordinator dispatching the GLM executor: the coordinator's model does
   not determine the reviewer's destination (the policy's opening paragraph has
   executor and destination evaluated separately).
-- FireRouter grant: Royal, 2026-11-10. The Opus review pass for a FireRouter diff is
-  `delegate.py --review --author firerouter --role premium`.
+- FireRouter grant: Royal, 2026-11-10, for scouting. Its executor trial
+  (2026-11-10) ended 2026-11-20, when Royal moved implementers back to Sol.
 - Royal has no Claude work account, which is why unavailable GLM is reported
   rather than replaced with an invented work login.
 
