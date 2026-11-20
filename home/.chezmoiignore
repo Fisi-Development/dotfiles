@@ -73,6 +73,12 @@ install-fish-plugins.sh
 .grok
 {{ end }}
 
+{{ if not (stat (joinPath .chezmoi.homeDir ".gemini")) }}
+# Antigravity / Gemini home exists only where Antigravity is installed.
+.gemini
+.gemini/**
+{{ end }}
+
 # DigitalOcean MCP wrapper: one per OS family.
 {{ if eq .chezmoi.os "windows" }}
 .agents/bin/do-mcp

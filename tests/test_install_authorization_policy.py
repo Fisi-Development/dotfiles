@@ -77,7 +77,7 @@ class InstallerTests(unittest.TestCase):
         # Only guarded harnesses follow the check; unguarded entries stay as they were.
         # Codex without the guard in hooks.json and OpenCode without the plugin have no
         # gate, so they get auto even though the fixture started Codex at full access.
-        expected = {'grok': 'auto', 'codex': 'auto', 'claude': 'full-access', 'opencode': 'auto'}
+        expected = {'grok': 'auto', 'codex': 'auto', 'claude': 'full-access', 'opencode': 'auto', 'antigravity': 'auto'}
         self.assertEqual(json.loads(new)['t3_runtime_modes'], expected)
         self.assertEqual(preview['telepathica']['after'], expected)
         for fragment in (b'  "token": "SECRET",', b'  "label": "synthetic",', b'  "other": {\n    "enabled": true\n  }'):
@@ -96,7 +96,7 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.2', 'updater_checked_at': ran, 'current': False})
         self.assertEqual(summary['launch_mode'], 'auto')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes'],
-                         {'grok': 'auto', 'codex': 'auto', 'claude': 'auto', 'opencode': 'auto'})
+                         {'grok': 'auto', 'codex': 'auto', 'claude': 'auto', 'opencode': 'auto', 'antigravity': 'auto'})
 
     def test_opencode_follows_guard_only_with_plugin(self):
         path = self.config()
@@ -142,6 +142,29 @@ class InstallerTests(unittest.TestCase):
         self.write('.codex/hooks.json', json.dumps({'hooks': {}}))
         self.run_installer('--apply')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['codex'], 'auto')
+
+    def test_antigravity_follows_guard_only_when_every_config_has_enabled_hook(self):
+        path = self.config()
+        hook = {'agent-guard': {'PreToolUse': [{'matcher': '*', 'hooks': [
+            {'type': 'command', 'command': '"/etc/claude-code/agent-guard/agent-guard"', 'timeout': 10}]}]}}
+        self.write('.gemini/config/hooks.json', json.dumps(hook))
+        self.write('.t3/userdata/providers/antigravity/profile-a/config/hooks.json', json.dumps(hook))
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'full-access')
+        # A second T3 profile without agent-guard downgrades Antigravity to auto.
+        self.write('.t3/userdata/providers/antigravity/profile-b/config/hooks.json', json.dumps({}))
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'auto')
+        # Disabled hook entry does not count as guarded.
+        self.write('.t3/userdata/providers/antigravity/profile-b/config/hooks.json', json.dumps({
+            'agent-guard': {'enabled': False, 'PreToolUse': hook['agent-guard']['PreToolUse']}
+        }))
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'auto')
+        # Wiring profile-b restores full-access.
+        self.write('.t3/userdata/providers/antigravity/profile-b/config/hooks.json', json.dumps(hook))
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'full-access')
 
     def test_overrides_refused_for_real_home(self):
         result = subprocess.run([sys.executable, str(SCRIPT), '--home', str(pathlib.Path.home()),
