@@ -85,10 +85,10 @@ coordination does not constitute independent GLM review. Existing authorized
 Codex subscription implementation routes retain their previous scope.
 
 The same grant covers FireRouter through the same gateway, pinned to
-litellm/accounts/fireworks/routers/firerouter, for read-only scouting, recon and
-swarm reading (the `scout` role in `~/.agents/model-policy.toml`). FireRouter
-does not report which model answered a call; that is accepted. It never writes
-deliverables alone, and the payload limits below apply to it unchanged.
+litellm/accounts/fireworks/routers/firerouter, only for read-only scouting, recon
+and swarm reading (the `scout` role in `~/.agents/model-policy.toml`); it never
+writes deliverables. FireRouter does not report which model answered a call;
+that is accepted. The payload limits below apply to it unchanged.
 
 The grant excludes credentials, secret values, real PII, production data and
 access-granting share links; the configured client may use existing credentials
