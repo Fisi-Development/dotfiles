@@ -88,23 +88,3 @@ Files that Codex created in the hub homes while running from a Harbor mesh sessi
 ## Account order
 
 Codex requests use the work account first and fall back to the personal account. The hub chooses from the ready accounts with the highest `priority`, so the work auth file carries `"priority": 10` and the personal one keeps the default 0. An account at its quota limit cools down and stops counting as ready, which sends new requests to the next priority until the work quota resets. Change it in the management dashboard (**Auth Files**, then the account's Priority) or with `PATCH /v0/management/auth-files/fields` and `{"name": "<auth file>", "priority": <n>}`. The value is stored in the auth file and survives restarts.
-
-## Gemini through OpenCode in T3
-
-The hub's Antigravity OAuth account also serves Gemini through its
-OpenAI-compatible endpoint. Run this on each host after chezmoi applies the
-installer and the local hub access-key file is present:
-
-```sh
-python3 ~/.agents/bin/subscription-hub-gemini.py
-```
-
-Use `python` on Windows. The installer checks a live Gemini response before
-adding **Antigravity Hub** to the existing OpenCode configuration. OpenCode
-reads the hub key from its existing file at startup. In T3, select **OpenCode**
-and choose Gemini 4 Argon High, Gemini 4 Hydrogen XHigh, or Gemini 3.5 Flash
-Lite. Refresh the OpenCode provider after installation if its model list is
-already cached. The native Antigravity provider's Google sign-in is separate.
-
-Pass `--verify` to check the installed entry and make a live Gemini request
-without writing configuration.
