@@ -149,20 +149,35 @@ class InstallerTests(unittest.TestCase):
             {'type': 'command', 'command': '"/etc/claude-code/agent-guard/agent-guard"', 'timeout': 10}]}]}}
         self.write('.gemini/config/hooks.json', json.dumps(hook))
         self.write('.t3/userdata/providers/antigravity/profile-a/config/hooks.json', json.dumps(hook))
+        # Guard older than 0.5.101 cannot speak Antigravity's hook protocol -> stays auto.
+        self.run_installer('--apply')
+        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'auto')
+        # Upgrade fixture guard and updater to 0.5.101.
+        self.guard.write_text('@echo agent-guard 0.5.101\n' if os.name == 'nt' else
+                              '#!' + sys.executable + '\nprint("agent-guard 0.5.101")\n')
+        self.guard.chmod(0o700)
+        self.updater('0.5.101')
         self.run_installer('--apply')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'full-access')
         # A second T3 profile without agent-guard downgrades Antigravity to auto.
         self.write('.t3/userdata/providers/antigravity/profile-b/config/hooks.json', json.dumps({}))
         self.run_installer('--apply')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'auto')
-        # Disabled hook entry does not count as guarded.
-        self.write('.t3/userdata/providers/antigravity/profile-b/config/hooks.json', json.dumps({
-            'agent-guard': {'enabled': False, 'PreToolUse': hook['agent-guard']['PreToolUse']}
-        }))
-        self.run_installer('--apply')
-        self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'auto')
-        # Wiring profile-b restores full-access.
-        self.write('.t3/userdata/providers/antigravity/profile-b/config/hooks.json', json.dumps(hook))
+        # Narrow matcher, non-command type, shell wrapper, or disabled entry do not count as guarded.
+        for bad in (
+            {'agent-guard': {'enabled': False, 'PreToolUse': hook['agent-guard']['PreToolUse']}},
+            {'agent-guard': {'enabled': 'false', 'PreToolUse': hook['agent-guard']['PreToolUse']}},
+            {'agent-guard': {'PreToolUse': [{'matcher': 'run_command', 'hooks': hook['agent-guard']['PreToolUse'][0]['hooks']}]}},
+            {'agent-guard': {'PreToolUse': [{'matcher': '*', 'hooks': [{'type': 'prompt', 'command': '/etc/claude-code/agent-guard/agent-guard'}]}]}},
+            {'agent-guard': {'PreToolUse': [{'matcher': '*', 'hooks': [{'type': 'command', 'command': 'echo agent-guard; true'}]}]}},
+        ):
+            self.write('.t3/userdata/providers/antigravity/profile-b/config/hooks.json', json.dumps(bad))
+            self.run_installer('--apply')
+            self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'auto', bad)
+        # Wiring profile-b with a Windows-style quoted exe path restores full-access.
+        win_hook = {'agent-guard': {'PreToolUse': [{'matcher': '*', 'hooks': [
+            {'type': 'command', 'command': r'"C:\Program Files\ClaudeCode\agent-guard\agent-guard.exe"', 'timeout': 10}]}]}}
+        self.write('.t3/userdata/providers/antigravity/profile-b/config/hooks.json', json.dumps(win_hook))
         self.run_installer('--apply')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes']['antigravity'], 'full-access')
 
