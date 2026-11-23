@@ -3,7 +3,7 @@
 Notes: `~/.agents/authorization-policy-notes.md`. An addition that does not fit
 moves explanation there and never removes a rule; only Royal removes a rule.
 
-Policy revision: 2026-11-18. Apply alongside harness safety policy and the current
+Policy revision: 2026-11-23. Apply alongside harness safety policy and the current
 project's action gates. Evaluate the requested action, payload, destination,
 executor, account, and project separately. Credentials or a configured provider
 alone grant no permission. Task authorization does not change runtime access.
@@ -118,6 +118,13 @@ that film fails. Every other ip-gitops merge, dev data writes, and dev secret
 writes require separate go requests; retrying a failed default-branch pipeline
 or job, twice per failure at most, does not. This policy grants no production
 actions or unrelated company deployment or outward communication.
+Shared Vercel Board (broad Board write gate, Royal, 2026-11-23): agents may
+read, post, reply, react, and label on https://workspace.dev.apptechcorp.com/board
+(via `board` or `board-agent exec`) without per-message approval for agent-owned
+delivery, handoffs, commentary, Shelf/proof drops, status updates, and cross-pod
+coordination, using an agent display profile (`<agent> via maiken`). Excludes
+credentials, secret values, real PII, production data, and access-granting share
+links, and never substitutes for company repo, deployment, or Slack gates.
 Personal-tooling shipping uses its existing bounded authorization; company
 workspace publication keeps its own gates. Preserve agent-guard hooks and
 existing hard deny/ask controls.
