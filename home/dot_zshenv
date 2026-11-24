@@ -31,8 +31,8 @@ export PATH
 # AppTech Shelf CLI endpoints. Without them `shelf` targets 127.0.0.1. Here, not
 # .zshrc, so agents' `zsh -c` commands get them too. Keep in step with
 # ~/.config/fish/conf.d/shelf.fish.
-export SHELF_TRUSTED_BASE_URL=https://shelf.apptechcorp.com
-export SHELF_RENDER_BASE_URL=https://shelf.apptechcorp.com
+export SHELF_TRUSTED_BASE_URL=https://shelf.dev.apptechcorp.com
+export SHELF_RENDER_BASE_URL=https://shelf.dev.apptechcorp.com
 
 # Agent harnesses write bash. With fish as the login shell, Claude Code and
 # Codex fall back to zsh and run each command as `zsh -c`; OpenCode does too.
