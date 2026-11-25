@@ -61,18 +61,23 @@ def protected(path):
     return True
 
 def updater_latest(path, fixture=False, now=None):
-    """The version the updater last accepted and when it ran, or (None, None) when the record
-    is missing, unreadable, stale, from the future, or writable by someone other than root."""
+    """Return the accepted version, check time, and any verification error."""
     try:
-        if not fixture and not protected(path): return None,None
+        if not fixture and not protected(path): return None,None,'untrusted'
         state=json.loads(path.read_text(encoding='utf-8'))
         ran=datetime.datetime.fromisoformat(state['last_run'])
         age=((now or datetime.datetime.now(datetime.timezone.utc))-ran).total_seconds()
         match=re.fullmatch(r'(\d+)\.(\d+)\.(\d+)',state['release_considered'])
-        if match and -300<=age<=STATE_MAX_AGE: return tuple(map(int,match.groups())),state['last_run']
-    except (OSError,ValueError,KeyError,TypeError,AttributeError):
-        pass
-    return None,None
+        if not match: return None,None,'invalid'
+        if age < -300: return None,None,'future'
+        if age > STATE_MAX_AGE: return None,None,f'stale ({int(age)}s old)'
+        return tuple(map(int,match.groups())),state['last_run'],None
+    except FileNotFoundError:
+        return None,None,'missing'
+    except OSError as exc:
+        return None,None,f'unreadable: {exc}'
+    except (ValueError,KeyError,TypeError,AttributeError):
+        return None,None,'invalid'
 
 def agent_guard_status(guard_bin=None, state_path=None, fixture=False, now=None):
     installed=None
@@ -87,10 +92,14 @@ def agent_guard_status(guard_bin=None, state_path=None, fixture=False, now=None)
     # Read the record of the updater that installs this binary. Without a fresh record the
     # newest build is unknown, so the guard does not count as current.
     if state_path is None and binary is not None: state_path=updater_state_path(pathlib.Path(binary))
-    latest,checked=updater_latest(state_path,fixture,now) if state_path is not None else (None,None)
+    if state_path is not None:
+        latest,checked,error=updater_latest(state_path,fixture,now)
+    else:
+        latest,checked,error=None,None,'missing' if binary is not None else None
     return {'installed':'.'.join(map(str,installed)) if installed is not None else None,
             'latest':'.'.join(map(str,latest)) if latest is not None else None,
             'updater_checked_at':checked,
+            'updater_error':error,
             'current':installed is not None and latest is not None and installed>=latest}
 
 def codex_hooked(home):

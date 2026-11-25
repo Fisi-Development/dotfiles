@@ -1,5 +1,7 @@
+import contextlib
 import datetime
 import importlib.util
+import io
 import json
 import os
 import pathlib
@@ -69,7 +71,8 @@ class InstallerTests(unittest.TestCase):
         ran = self.updater('0.4.1')
         preview = self.run_installer()
         self.assertEqual(path.read_bytes(), old)
-        self.assertEqual(preview['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.1', 'updater_checked_at': ran, 'current': True})
+        self.assertEqual(preview['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.1', 'updater_checked_at': ran,
+                                                  'updater_error': None, 'current': True})
         self.assertEqual(preview['telepathica']['before'], {'grok': 'auto', 'codex': 'full-access'})
         self.assertEqual(preview['launch_mode'], 'full-access')
         self.run_installer('--apply')
@@ -93,7 +96,8 @@ class InstallerTests(unittest.TestCase):
         # A newer main build the updater accepted but has not installed.
         ran = self.updater('0.4.2', result='failed', reason='artifact_expired')
         summary = self.run_installer('--apply')
-        self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.2', 'updater_checked_at': ran, 'current': False})
+        self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': '0.4.2', 'updater_checked_at': ran,
+                                                  'updater_error': None, 'current': False})
         self.assertEqual(summary['launch_mode'], 'auto')
         self.assertEqual(json.loads(path.read_bytes())['t3_runtime_modes'],
                          {'grok': 'auto', 'codex': 'auto', 'claude': 'auto', 'opencode': 'auto', 'antigravity': 'auto'})
@@ -188,6 +192,43 @@ class InstallerTests(unittest.TestCase):
         self.assertIn('fixture --home', result.stderr)
         self.assertEqual(result.stdout, '')
 
+    def test_unreadable_updater_record_preserves_auto_for_guarded_harnesses(self):
+        self.config()
+        self.write('.codex/hooks.json', json.dumps({'hooks': {'PreToolUse': [{'hooks': [
+            {'type': 'command', 'command': 'agent-guard hook codex'}]}]}}))
+        self.write('.gemini/config/hooks.json', json.dumps({'agent-guard': {'PreToolUse': [{'hooks': [
+            {'type': 'command', 'command': 'agent-guard'}]}]}}))
+        self.write('.config/opencode/plugins/agent-guard.ts', '// synthetic plugin\n')
+        self.updater('0.5.101')
+        guard_version = subprocess.CompletedProcess([], 0, 'agent-guard 0.5.101', '')
+        args = [str(SCRIPT), '--home', str(self.home), '--guard-bin', str(self.guard),
+                '--updater-state', str(self.state)]
+        read_text = pathlib.Path.read_text
+
+        def deny_updater_read(path, *args, **kwargs):
+            if path == self.state:
+                raise PermissionError('fixture updater record denied')
+            return read_text(path, *args, **kwargs)
+
+        with mock.patch.object(sys, 'argv', args), mock.patch.object(subprocess, 'run', return_value=guard_version):
+            with contextlib.redirect_stdout(io.StringIO()) as fresh_output:
+                installer.main()
+            with mock.patch.object(pathlib.Path, 'read_text', deny_updater_read), \
+                    contextlib.redirect_stdout(io.StringIO()) as unreadable_output:
+                installer.main()
+
+        fresh = json.loads(fresh_output.getvalue())
+        self.assertIsNone(fresh['agent_guard']['updater_error'])
+        self.assertTrue(fresh['agent_guard']['current'])
+        self.assertEqual(fresh['telepathica']['after'], {'grok': 'auto', 'claude': 'full-access', 'codex': 'full-access',
+                                                         'antigravity': 'full-access', 'opencode': 'full-access'})
+        unreadable = json.loads(unreadable_output.getvalue())
+        self.assertEqual(unreadable['agent_guard'], {'installed': '0.5.101', 'latest': None, 'updater_checked_at': None,
+                                                    'updater_error': 'unreadable: fixture updater record denied', 'current': False})
+        self.assertEqual(unreadable['launch_mode'], 'auto')
+        self.assertEqual(unreadable['telepathica']['after'], {'grok': 'auto', 'claude': 'auto', 'codex': 'auto',
+                                                              'antigravity': 'auto', 'opencode': 'full-access'})
+
     def test_version_must_be_the_whole_output(self):
         self.guard.write_text('@echo not agent-guard 9.9.9 really\n' if os.name == 'nt' else
                               '#!/bin/sh\necho "not agent-guard 9.9.9 really"\n')
@@ -211,14 +252,21 @@ class InstallerTests(unittest.TestCase):
                     case = dict(case)
                     self.updater(case.pop('considered', '0.4.1'), case.pop('age', datetime.timedelta(minutes=5)), **case)
                 summary = self.run_installer()
-                self.assertEqual(summary['agent_guard'], {'installed': '0.4.1', 'latest': None, 'updater_checked_at': None, 'current': False})
+                guard = summary['agent_guard']
+                self.assertEqual((guard['installed'], guard['latest'], guard['updater_checked_at'], guard['current']),
+                                 ('0.4.1', None, None, False))
+                if name == 'stale':
+                    self.assertRegex(guard['updater_error'], r'^stale \(\d+s old\)$')
+                else:
+                    self.assertEqual(guard['updater_error'], name if name in ('missing', 'future') else 'invalid')
                 self.assertEqual(summary['launch_mode'], 'auto')
 
     def test_missing_guard_and_config(self):
         self.guard.unlink()
         ran = self.updater('0.4.1')
         summary = self.run_installer()
-        self.assertEqual(summary['agent_guard'], {'installed': None, 'latest': '0.4.1', 'updater_checked_at': ran, 'current': False})
+        self.assertEqual(summary['agent_guard'], {'installed': None, 'latest': '0.4.1', 'updater_checked_at': ran,
+                                                  'updater_error': None, 'current': False})
         self.assertEqual(summary['launch_mode'], 'auto')
         self.assertEqual(summary['telepathica'], {'path': None, 'before': None, 'after': None})
         self.assertFalse(any('config.json' in path for path in summary['changed_paths']))
@@ -409,7 +457,8 @@ class GuardStatusTests(unittest.TestCase):
 
     def test_numeric_versions_and_installed_ahead(self):
         status, run = self.status('0.10.0', self.state('0.10.0'), fixture=True)
-        self.assertEqual(status, {'installed': '0.10.0', 'latest': '0.10.0', 'updater_checked_at': self.RAN, 'current': True})
+        self.assertEqual(status, {'installed': '0.10.0', 'latest': '0.10.0', 'updater_checked_at': self.RAN,
+                                  'updater_error': None, 'current': True})
         self.assertEqual(run.call_args_list[0].args[0], ['/guard', '--version'])
         self.assertEqual(run.call_args_list[0].kwargs['timeout'], 10)
         self.assertNotIn('shell', run.call_args_list[0].kwargs)
@@ -444,19 +493,25 @@ class GuardStatusTests(unittest.TestCase):
             status = installer.agent_guard_status(now=self.NOW)
         self.assertEqual(run.call_args_list[0].args[0][0], str(binary))
         self.assertEqual(protected.call_args.args[0], self.root / 'agent-guard-updater/state.json')
-        self.assertEqual((status['latest'], status['current']), ('0.4.1', True))
+        self.assertEqual((status['latest'], status['current'], status['updater_error']), ('0.4.1', True, None))
 
     def test_real_home_requires_a_protected_record(self):
         with mock.patch.object(installer, 'protected', return_value=False):
             status = self.status('0.4.1', self.state('0.4.1'))[0]
-        self.assertEqual((status['latest'], status['current']), (None, False))
+        self.assertEqual((status['latest'], status['current'], status['updater_error']), (None, False, 'untrusted'))
+
+    def test_no_guard_has_no_updater_to_check(self):
+        with mock.patch.object(installer, 'GUARD_PATHS', (self.root / 'absent',)):
+            status = installer.agent_guard_status(now=self.NOW)
+        self.assertEqual(status, {'installed': None, 'latest': None, 'updater_checked_at': None,
+                                  'updater_error': None, 'current': False})
 
     @unittest.skipIf(os.name == 'nt' or os.getuid() == 0, 'needs a non-root POSIX user')
     def test_user_owned_record_is_unprotected(self):
         # A record a user can write could claim any version; only root's counts.
         path = self.state('0.4.1')
         self.assertFalse(installer.protected(path))
-        self.assertEqual(installer.updater_latest(path, now=self.NOW), (None, None))
+        self.assertEqual(installer.updater_latest(path, now=self.NOW), (None, None, 'untrusted'))
 
 
 if __name__ == '__main__':
