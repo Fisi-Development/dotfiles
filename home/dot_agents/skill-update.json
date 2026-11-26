@@ -13,7 +13,12 @@
     "migrate-to-shoehorn",
     "scaffold-exercises",
     "setup-pre-commit",
-    "pr"
+    "pr",
+    "blast-radius",
+    "interrogate",
+    "loop-me",
+    "setup-matt-pocock-skills",
+    "show-me"
   ],
   "ignore_deleted": [
     "comment-cleanup",
