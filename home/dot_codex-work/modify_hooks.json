@@ -67,15 +67,58 @@
 {{- end -}}
 {{- /*
   Added 2026-11-11: skill-router's library steer (skills/skill-router,
-  library.toml) on SessionStart, UserPromptSubmit and PreToolUse (shell calls
-  only), and on Stop, where it holds a turn end once when the session parks on
+  library.toml) on SessionStart, UserPromptSubmit and PreToolUse (shell calls,
+  subagent and delegate launches, PR watches, T3 thread launches and
+  apply_patch file edits; the matcher is the frozen string from the
+  2026-11-25 skills overhaul and must equal one in Harbor's
+  tools/codex_hook_trust.py LIBRARY_STEER, or Codex skips the hook with no
+  error), and on Stop, where it holds a turn end once when the session parks on
   an Auspex watch its last message does not name (added 2026-11-11). Same position rules as the full-send entry above;
   Harbor's tools/codex_hook_trust.py records its trust on rollout.
 */ -}}
 {{- $lsScript := printf "%s/.agents/skills/skill-router/scripts/library_steer.py" $home -}}
 {{- $lsCmd := printf "%s \"%s\" hook codex" (ternary "python" "python3" (eq .chezmoi.os "windows")) $lsScript -}}
 {{- $lsPresent := stat $lsScript -}}
-{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "Stop" "" "PreToolUse" "^(Bash|PowerShell|exec_command|shell|shell_command|local_shell|unified_exec|collaborationspawn_agent|mcp__t3_code__delegate_task|mcp__t3-code__delegate_task)$" -}}
+{{- /*
+  Added 2026-11-25 (skills overhaul): skill-router's hidden_skills_context.py
+  is deleted; the library steer's SessionStart card now carries the hidden
+  workflow list. Any hook that runs it (bouncehouse had them wired by hand)
+  is removed here one hook at a time, so another hook in the same group
+  (herdr) stays; a group left with no hooks is dropped.
+*/ -}}
+{{- range $event, $groups := $hooks -}}
+{{-   $keptGroups := list -}}
+{{-   $stripped := false -}}
+{{-   range $group := $groups -}}
+{{-     $groupHooks := list -}}
+{{-     $stale := false -}}
+{{-     range $h := (index $group "hooks") -}}
+{{-       if contains "skill-router/scripts/hidden_skills_context.py" (index $h "command" | default "") -}}
+{{-         $stale = true -}}
+{{-       else -}}
+{{-         $groupHooks = append $groupHooks $h -}}
+{{-       end -}}
+{{-     end -}}
+{{-     if not $stale -}}
+{{-       $keptGroups = append $keptGroups $group -}}
+{{-     else -}}
+{{-       $stripped = true -}}
+{{-       if $groupHooks -}}
+{{-         $_ := set $group "hooks" $groupHooks -}}
+{{-         $keptGroups = append $keptGroups $group -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if $stripped -}}
+{{-     $changed = true -}}
+{{-     if $keptGroups -}}
+{{-       $_ := set $hooks $event $keptGroups -}}
+{{-     else -}}
+{{-       $_ := unset $hooks $event -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "Stop" "" "PreToolUse" "^(Bash|PowerShell|exec_command|shell|shell_command|local_shell|unified_exec|collaborationspawn_agent|mcp__t3_code__delegate_task|mcp__t3-code__delegate_task|mcp__t3_code_direct__delegate_task|mcp__t3_code__watch_pull_request|mcp__t3-code__watch_pull_request|apply_patch|mcp__t3_code__t3_thread_launch|mcp__t3-code__t3_thread_launch|mcp__t3_code_direct__t3_thread_launch)$" -}}
 {{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" "Stop" -}}
 {{-   $lsEntry := dict "matcher" (index $lsMatchers $event) "hooks" (list (dict "type" "command" "command" $lsCmd "timeout" 10)) -}}
 {{-   $kept := list -}}
