@@ -22,6 +22,9 @@ they were restored; the fifth, a citation, is under "Project action gates".
 
 ## Autonomous work
 
+- Examples of device approvals: Windows Hello, Touch ID and UAC.
+- Examples of first-time harness trust: Codex `/hooks` approval or OAuth login.
+- See the policy's "Project action gates" for company gates.
 - Examples of a short handover: "go fix X", "roll that out", "clean that up".
 - Raising a Windows Hello or Touch ID request: Royal's part is the approval on
   his own device.
@@ -35,13 +38,23 @@ they were restored; the fifth, a citation, is under "Project action gates".
 - A GPT coordinator dispatching the GLM executor: the coordinator's model does
   not determine the reviewer's destination (the policy's opening paragraph has
   executor and destination evaluated separately).
+- FireRouter uses the `scout` role in `~/.agents/model-policy.toml`.
 - FireRouter grant: Royal, 2026-11-10, for scouting. Its executor trial
   (2026-11-10) ended 2026-11-20, when Royal moved implementers back to Sol.
 - Royal has no Claude work account, which is why unavailable GLM is reported
   rather than replaced with an invented work login.
 
+## Review of Royal's own tools
+
+- Royal recorded the Opus and GPT cross-family review decision on 27 Oct 2026.
+
 ## Project action gates
 
+- Required approvals can include CODEOWNERS, cross-pod approval and any
+  other applicable rule.
+- Examples of decisions reserved to Royal: a fee number, the FX freeze choice,
+  the load or the work split among people.
+- Shared Vercel Board: Royal recorded the broad Board write gate on 23 Nov 2026.
 - Own ip-fe MRs merge on the same terms since 2026-11-14 (Mark). Own apcx-pods
   MRs since 2026-11-18, Mark: "yes merge 354 and why are you waiting on me for a
   one word fix?", scope as read by the advisor thread
@@ -54,6 +67,8 @@ they were restored; the fifth, a citation, is under "Project action gates".
 ## Royal's GitHub repositories
 
 - Royal is an admin of github.com/Fisi-Development.
+- Harbor `docs/authorizations.md` lists the repositories that moved from
+  royalaid to Fisi-Development. Their old royalaid URLs redirect.
 
 ## Chezmoi rollout
 
@@ -62,6 +77,8 @@ they were restored; the fifth, a citation, is under "Project action gates".
 
 ## Launch modes
 
+- OpenCode has no auto reviewer. In lower modes T3 asks Royal before each
+  command, edit and fetch, which stops unattended work.
 - How the mode reaches a launch: `install-authorization-policy.py` writes it
   into the host's Telepathica config as `t3_runtime_modes`, one entry per
   harness, and Telepathica's handoff text names the mode it launched in.
@@ -69,6 +86,14 @@ they were restored; the fifth, a citation, is under "Project action gates".
 
 ## Telepathica
 
+- Examples of results requested in a reply: command output, versions, paths,
+  revisions, status and blockers.
+- Harbor `docs/authorizations.md` records the Telepathica release grant on
+  9 Oct 2026.
+- Examples of read-only release diagnostics: `git status`, `log`, `diff`,
+  `show`, `branch --show-current`, `rev-parse` and `config --get`, as well as
+  `cat`, `tail`, `grep` and `ls` of release logs, the checkout and its hooks
+  directory, and `telepathica choir`.
 - Telepathica is Royal's own system for handing work between his agent
   sessions.
 - Example of an archive request: "archive everything that's done". Archiving
