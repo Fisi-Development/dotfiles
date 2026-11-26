@@ -203,7 +203,11 @@
   library.toml). One script on SessionStart (the library card),
   UserPromptSubmit (trigger phrases such as "tell me when CI finishes") and
   PreToolUse (sleep loops, --watch polls, Monitor, ScheduleWakeup, plain ssh
-  to a mesh host, transcript greps). It only adds context and never blocks.
+  to a mesh host, transcript greps, subagent and T3 launches, and file edits:
+  the first frontend edit and the library entries marked `edits`). The
+  PreToolUse matcher is the frozen string from the 2026-11-25 skills
+  overhaul; Codex's twin is in home/dot_codex/modify_hooks.json. It only adds
+  context and never blocks.
   Present only while the skill is linked on this host. An existing entry keeps
   its place and gets the current command; a missing one is appended. Same
   block in home/private_dot_claude-hub-personal/modify_private_settings.json.
@@ -214,7 +218,45 @@
 {{- if hasKey $settings "hooks" -}}
 {{-   $lsHooks = index $settings "hooks" -}}
 {{- end -}}
-{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "Stop" "" "PreToolUse" "^(Bash|PowerShell|Monitor|ScheduleWakeup|Read|Grep|Glob|mcp__t3-code__task_status|mcp__t3-code__delegate_task|mcp__t3-code__watch_pull_request|Agent|Task)$" -}}
+{{- /*
+  Added 2026-11-25 (skills overhaul): skill-router's hidden_skills_context.py
+  is deleted; the library steer's SessionStart card now carries the hidden
+  workflow list. Any hook that runs it (bouncehouse had them wired by hand)
+  is removed here one hook at a time, so another hook in the same group
+  (herdr) stays; a group left with no hooks is dropped.
+*/ -}}
+{{- range $event, $groups := $lsHooks -}}
+{{-   $keptGroups := list -}}
+{{-   $stripped := false -}}
+{{-   range $group := $groups -}}
+{{-     $groupHooks := list -}}
+{{-     $stale := false -}}
+{{-     range $h := (index $group "hooks") -}}
+{{-       if contains "skill-router/scripts/hidden_skills_context.py" (index $h "command" | default "") -}}
+{{-         $stale = true -}}
+{{-       else -}}
+{{-         $groupHooks = append $groupHooks $h -}}
+{{-       end -}}
+{{-     end -}}
+{{-     if not $stale -}}
+{{-       $keptGroups = append $keptGroups $group -}}
+{{-     else -}}
+{{-       $stripped = true -}}
+{{-       if $groupHooks -}}
+{{-         $_ := set $group "hooks" $groupHooks -}}
+{{-         $keptGroups = append $keptGroups $group -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if $stripped -}}
+{{-     if $keptGroups -}}
+{{-       $_ := set $lsHooks $event $keptGroups -}}
+{{-     else -}}
+{{-       $_ := unset $lsHooks $event -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "Stop" "" "PreToolUse" "^(Bash|PowerShell|Monitor|ScheduleWakeup|Read|Grep|Glob|mcp__t3-code__task_status|mcp__t3-code__delegate_task|mcp__t3-code__watch_pull_request|Agent|Task|Edit|Write|MultiEdit|NotebookEdit|mcp__t3-code__t3_thread_launch)$" -}}
 {{- $lsPresent := stat $lsScript -}}
 {{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" "Stop" -}}
 {{-   $lsEntry := dict "matcher" (index $lsMatchers $event) "hooks" (list (dict "type" "command" "command" $lsCmd "timeout" 10)) -}}
@@ -341,6 +383,20 @@
 {{-     $_ := set $overrides . "off" -}}
 {{-   end -}}
 {{- end -}}
+{{- /*
+  Added 2026-11-25 (skills overhaul, decision C3): the claude.ai synced skills
+  (~/.claude/skills/synced) that agent work does not use are hidden from the
+  model and stay available as /name, which frees about 5,800 description
+  characters in every session's listing. pdf, docx, xlsx and pptx stay
+  listed. A value Royal set by hand is kept. Same list in
+  home/private_dot_claude-hub-personal/modify_private_settings.json.
+*/ -}}
+{{- $syncedOff := list "built-in-browser" "chrome-browser" "computer-use" "deep-research" "docs" "google-workspace" "import-memory" "morning" "skill-creator" -}}
+{{- range $syncedOff -}}
+{{-   if not (hasKey $overrides .) -}}
+{{-     $_ := set $overrides . "user-invocable-only" -}}
+{{-   end -}}
+{{- end -}}
 {{- $_ := set $settings "skillOverrides" $overrides -}}
 {{- /*
   Added 2026-11-07 (token-spend study): sessions compact at 500K tokens, not the
@@ -354,4 +410,16 @@
   home/private_dot_claude-hub-personal/modify_private_settings.json.
 */ -}}
 {{- $_ := set $settings "autoCompactWindow" 500000 -}}
+{{- /*
+  Added 2026-11-25 (skills overhaul, decision C2): Claude Code shortens skill
+  descriptions, least-invoked first, once the listing passes its share of the
+  context window (default 0.01), so the skills installed on 25 Nov lost
+  theirs and could not be routed to. This is the third overflow (4 Sep,
+  29 Oct). The fraction is a ceiling, not a reservation: the listing costs
+  only its real size, about 37,000 characters of personal and claude.ai
+  synced skills plus the bundled ones on 25 Nov. 0.1 is about 80,000
+  characters on a 200K-window worker. Same value in
+  home/private_dot_claude-hub-personal/modify_private_settings.json.
+*/ -}}
+{{- $_ := set $settings "skillListingBudgetFraction" 0.1 -}}
 {{- toPrettyJson $settings | trim }}
