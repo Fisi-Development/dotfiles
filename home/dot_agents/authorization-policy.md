@@ -3,7 +3,7 @@
 Notes: `~/.agents/authorization-policy-notes.md`. An addition that does not fit
 moves explanation there and never removes a rule; only Royal removes a rule.
 
-Policy revision: 2026-11-23. Apply alongside harness safety policy and the current
+Policy revision: 2026-11-26. Apply alongside harness safety policy and the current
 project's action gates. Evaluate the requested action, payload, destination,
 executor, account, and project separately. Credentials or a configured provider
 alone grant no permission. Task authorization does not change runtime access.
@@ -99,6 +99,15 @@ creates no new provider destination or Claude account, so report unavailable GLM
 rather than substituting Opus or an invented work login. A rejected transfer
 stays rejected unless Royal grants that specific destination; changing the
 coordinator or wrapping a tool does not clear it.
+
+## Review of Royal's own tools
+
+Royal decided on 27 Oct 2026 that, in his own repositories, an Opus reviewer
+on a diff written by a GPT executor (Sol) counts as the cross-family review,
+and the reverse holds too. `sol-loop` and the bosun loop may use it when GLM is
+unavailable. Safety controls still get a separate security review and stop at
+a PR Royal merges. The rule above about reporting unavailable GLM instead of
+substituting Opus covers company work only.
 
 ## Project action gates
 
