@@ -1,8 +1,9 @@
 """Size limits for the always-loaded instruction files this repository deploys.
 
 Royal set the limits on 7 Nov 2026 (Harbor backlog 2026-11-07-injected-context-budget):
-20 KB for the shared agreement, 17 KB for the authorization policy (raised from 15 KB
-the same day, once Claude sessions stopped importing it) and 16 KB for a repository
+20 KB for the shared agreement, 20 KB for the authorization policy (raised from 15 KB to
+17 KB on 7 Nov once Claude sessions stopped importing it, and to 20 KB on 26 Nov 2026
+because remaining clauses are operative classifier rules) and 16 KB for a repository
 AGENTS.md. KB is 1,000 bytes. Harbor's tools/context_budget.py checks the deployed
 files and the fleet memory digest with the same limits (config/context-budget.json).
 
@@ -27,7 +28,7 @@ NONCE = 16
 
 LIMITS = [
     ('shared agreement', 'home/encrypted_AGENTS.md.age', 20000),
-    ('authorization policy', 'home/dot_agents/authorization-policy.md', 17000),
+    ('authorization policy', 'home/dot_agents/authorization-policy.md', 20000),
     ('repository AGENTS.md', 'AGENTS.md', 16000),
 ]
 POLICY = 'home/dot_agents/authorization-policy.md'
