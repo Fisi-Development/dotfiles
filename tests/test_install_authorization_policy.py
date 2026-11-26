@@ -427,7 +427,10 @@ class InstallerTests(unittest.TestCase):
                 self.assertIn('rollout and are not Self-Modification.', policy)
                 self.assertIn('permission settings outside that rollout.', policy)
                 self.assertIn('Unasked widening of permissions\nstays denied.', policy)
-        self.assertIn('Policy revision: 2026-11-18.', auto['environment'][-1])
+        revision_line = next(line for line in POLICY.splitlines()
+                             if line.startswith('Policy revision: '))
+        revision = revision_line.split('. ', 1)[0] + '.'
+        self.assertIn(revision, auto['environment'][-1])
         self.assertEqual(self.run_installer()['changed_paths'], [])
 
 
