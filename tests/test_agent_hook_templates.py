@@ -19,14 +19,16 @@ FROZEN_CLAUDE = (
     r'^(Bash|PowerShell|Monitor|ScheduleWakeup|Read|Grep|Glob|'
     r'mcp__t3-code__task_status|mcp__t3-code__delegate_task|'
     r'mcp__t3-code__watch_pull_request|Agent|Task|Edit|Write|MultiEdit|'
-    r'NotebookEdit|mcp__t3-code__t3_thread_launch)$'
+    r'NotebookEdit|mcp__t3-code__t3_thread_launch|mcp__t3-code__t3_thread_read)$'
 )
 FROZEN_CODEX = (
     r'^(Bash|PowerShell|exec_command|shell|shell_command|local_shell|unified_exec|'
     r'collaborationspawn_agent|mcp__t3_code__delegate_task|mcp__t3-code__delegate_task|'
     r'mcp__t3_code_direct__delegate_task|mcp__t3_code__watch_pull_request|'
     r'mcp__t3-code__watch_pull_request|apply_patch|mcp__t3_code__t3_thread_launch|'
-    r'mcp__t3-code__t3_thread_launch|mcp__t3_code_direct__t3_thread_launch)$'
+    r'mcp__t3-code__t3_thread_launch|mcp__t3_code_direct__t3_thread_launch|'
+    r'mcp__t3_code__t3_thread_read|mcp__t3-code__t3_thread_read|'
+    r'mcp__t3_code_direct__t3_thread_read)$'
 )
 HIDDEN_HOOK = {
     'type': 'command',
@@ -79,7 +81,8 @@ class AgentHookTemplatesTests(unittest.TestCase):
                 matcher = steer_group(doc, 'PreToolUse')['matcher']
                 self.assertEqual(matcher, FROZEN_CLAUDE)
                 for tool in ('Edit', 'Write', 'MultiEdit', 'NotebookEdit',
-                             'mcp__t3-code__t3_thread_launch', 'Bash', 'Agent'):
+                             'mcp__t3-code__t3_thread_launch', 'mcp__t3-code__t3_thread_read',
+                             'Bash', 'Agent'):
                     self.assertIsNotNone(re.fullmatch(matcher, tool), tool)
                 for tool in ('Skill', 'EditX'):
                     self.assertIsNone(re.fullmatch(matcher, tool), tool)
@@ -91,7 +94,11 @@ class AgentHookTemplatesTests(unittest.TestCase):
                 group = steer_group(doc, 'PreToolUse')
                 matcher = group['matcher']
                 self.assertEqual(matcher, FROZEN_CODEX)
-                for tool in ('apply_patch', 'exec_command', 'mcp__t3_code_direct__t3_thread_launch'):
+                for tool in ('apply_patch', 'exec_command',
+                             'mcp__t3_code_direct__t3_thread_launch',
+                             'mcp__t3_code__t3_thread_read',
+                             'mcp__t3-code__t3_thread_read',
+                             'mcp__t3_code_direct__t3_thread_read'):
                     self.assertIsNotNone(re.fullmatch(matcher, tool), tool)
                 self.assertEqual(len(group['hooks']), 1)
                 hook = group['hooks'][0]
