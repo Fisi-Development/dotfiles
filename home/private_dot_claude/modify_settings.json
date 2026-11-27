@@ -256,7 +256,7 @@
 {{-     end -}}
 {{-   end -}}
 {{- end -}}
-{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "Stop" "" "PreToolUse" "^(Bash|PowerShell|Monitor|ScheduleWakeup|Read|Grep|Glob|mcp__t3-code__task_status|mcp__t3-code__delegate_task|mcp__t3-code__watch_pull_request|Agent|Task|Edit|Write|MultiEdit|NotebookEdit|mcp__t3-code__t3_thread_launch)$" -}}
+{{- $lsMatchers := dict "SessionStart" "" "UserPromptSubmit" "" "Stop" "" "PreToolUse" "^(Bash|PowerShell|Monitor|ScheduleWakeup|Read|Grep|Glob|mcp__t3-code__task_status|mcp__t3-code__delegate_task|mcp__t3-code__watch_pull_request|Agent|Task|Edit|Write|MultiEdit|NotebookEdit|mcp__t3-code__t3_thread_launch|mcp__t3-code__t3_thread_read)$" -}}
 {{- $lsPresent := stat $lsScript -}}
 {{- range $event := list "SessionStart" "UserPromptSubmit" "PreToolUse" "Stop" -}}
 {{-   $lsEntry := dict "matcher" (index $lsMatchers $event) "hooks" (list (dict "type" "command" "command" $lsCmd "timeout" 10)) -}}
