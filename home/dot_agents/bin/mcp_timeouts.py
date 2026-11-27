@@ -13,8 +13,7 @@ and touches only the servers in TIMEOUTS:
 
 Claude Code's per-server "timeout" also caps the 1,800 s no-progress idle
 abort (Claude Code 2.1.303: idle = min(max(1800 s, timeout), timeout)), which is
-what the 2026-10-18 tool-call audit hit on chrome-devtools new_page and
-context-mode ctx_execute.
+what the 2026-10-18 tool-call audit hit on chrome-devtools new_page.
 
 `--check` prints the effective timeout of each server it can find and exits 1
 when one is missing or wrong. It reads only those numbers.
@@ -29,7 +28,7 @@ import shutil
 import subprocess
 import sys
 
-TIMEOUTS = {'chrome-devtools': 120, 'context-mode': 300}  # seconds
+TIMEOUTS = {'chrome-devtools': 120}  # seconds
 HOME = Path.home()
 PLUGINS = HOME / '.claude' / 'plugins'
 STATE = HOME / '.agents' / 'state' / 'mcp-timeouts.json'
@@ -196,7 +195,7 @@ def main():
         bad += not ok
         print(f'{"ok " if ok else "BAD"} {key}: {got} (want {want})')
     if not found:
-        print('no chrome-devtools or context-mode server configured on this host')
+        print('no chrome-devtools server configured on this host')
     return 1 if bad else 0
 
 

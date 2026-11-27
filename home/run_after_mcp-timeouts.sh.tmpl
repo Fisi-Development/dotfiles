@@ -1,4 +1,4 @@
-{{- /* Per-server MCP timeouts (chrome-devtools 120 s, context-mode 300 s); see ~/.agents/bin/mcp_timeouts.py. Empty, so skipped, on Windows. */ -}}
+{{- /* Per-server MCP timeouts (chrome-devtools 120 s); see ~/.agents/bin/mcp_timeouts.py. Empty, so skipped, on Windows. */ -}}
 {{- if ne .chezmoi.os "windows" -}}
 #!/bin/sh
 # Runs after every apply: a plugin update replaces the manifest it patches.
