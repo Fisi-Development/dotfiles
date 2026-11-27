@@ -88,9 +88,16 @@ install-fish-plugins.sh
 
 # Dev Drive package stores: only DESKTOP-O91444G has the Dev Drive (~/git/.stores).
 # On plain NTFS clone-or-copy is slower than pnpm's default, so every other host
-# (Mercury, the Mac) gets neither the pnpm rc nor the store environment script.
+# (Mercury, the Mac) gets neither the pnpm rc nor the desktop uv.toml.
 {{ if ne .chezmoi.hostname "DESKTOP-O91444G" }}
 AppData/Local/pnpm
+AppData/Roaming
+AppData/Roaming/**
+{{ end }}
+
+# Bun install cache override lives on Dev Drive (DESKTOP-O91444G) and AgentDev (macOS).
+{{ if and (ne .chezmoi.hostname "DESKTOP-O91444G") (ne .chezmoi.os "darwin") }}
+.bunfig.toml
 {{ end }}
 
 {{ if ne .chezmoi.os "windows" }}
