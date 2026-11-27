@@ -9,6 +9,15 @@
 	# other side. Do not "fix" this to autocrlf=true.
 	autocrlf = input
 	eol = lf
+	# Multi-agent ref-lock tolerance (2026-11-27 host perf audit): avoids lock
+	# contention across concurrent worktree/agent git operations. Leave
+	# core.fsmonitor unset globally (benchmarked +57-83% slower on Harbor).
+	filesRefLockTimeout = 1000
+	packedRefsTimeout = 5000
+{{- if eq .chezmoi.os "windows" }}
+	fscache = true
+	longpaths = true
+{{- end }}
 	editor = {{ if lookPath "cursor" }}cursor --wait{{ else if lookPath "nvim" }}nvim{{ else }}vi{{ end }}
 {{- if lookPath "delta" }}
 	pager = delta
@@ -47,6 +56,15 @@
 {{ end }}
 [init]
 	defaultBranch = main
+
+[fetch]
+	writeCommitGraph = true
+{{- if eq .chezmoi.os "windows" }}
+
+[worktree]
+	# Absolute gitdir paths avoid breakage across folder-mounted Dev Drives.
+	useRelativePaths = false
+{{- end }}
 
 [rerere]
 	enabled = true
