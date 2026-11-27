@@ -210,6 +210,45 @@
 {{- if $lsHooks -}}
 {{-   $_ := set $settings "hooks" $lsHooks -}}
 {{- end -}}
+{{- /*
+  Added 2026-11-27: Harbor's slow-turn-retro Stop hook
+  (~/.harbor/current/tools/slow_turn_retro.py). Present only while Harbor's
+  deployed copy exists. Same block in
+  home/private_dot_claude/modify_settings.json.
+*/ -}}
+{{- $strScript := printf "%s/.harbor/current/tools/slow_turn_retro.py" $home -}}
+{{- $strCmd := printf "%s \"%s\" hook claude" (ternary "python" "python3" (eq .chezmoi.os "windows")) $strScript -}}
+{{- $strPresent := stat $strScript -}}
+{{- $strEntry := dict "matcher" "" "hooks" (list (dict "type" "command" "command" $strCmd "timeout" 15)) -}}
+{{- $strKept := list -}}
+{{- $strPlaced := false -}}
+{{- if hasKey $lsHooks "Stop" -}}
+{{-   range $group := index $lsHooks "Stop" -}}
+{{-     $mine := false -}}
+{{-     range $h := (index $group "hooks") -}}
+{{-       if contains "tools/slow_turn_retro.py" (index $h "command" | default "") -}}
+{{-         $mine = true -}}
+{{-       end -}}
+{{-     end -}}
+{{-     if not $mine -}}
+{{-       $strKept = append $strKept $group -}}
+{{-     else if and $strPresent (not $strPlaced) -}}
+{{-       $strPlaced = true -}}
+{{-       $strKept = append $strKept $strEntry -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+{{- if and $strPresent (not $strPlaced) -}}
+{{-   $strKept = append $strKept $strEntry -}}
+{{- end -}}
+{{- if $strKept -}}
+{{-   $_ := set $lsHooks "Stop" $strKept -}}
+{{- else if hasKey $lsHooks "Stop" -}}
+{{-   $_ := unset $lsHooks "Stop" -}}
+{{- end -}}
+{{- if $lsHooks -}}
+{{-   $_ := set $settings "hooks" $lsHooks -}}
+{{- end -}}
 {{-   if not $guardOwnsAsks -}}
 {{-     toPrettyJson $settings | trim -}}
 {{-   else -}}

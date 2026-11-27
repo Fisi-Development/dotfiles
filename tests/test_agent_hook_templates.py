@@ -42,6 +42,7 @@ def setUpModule():
     for path in (
         '.agents/skills/skill-router/scripts/library_steer.py',
         '.agents/skills/full-send/scripts/ship_verbs.py',
+        '.harbor/current/tools/slow_turn_retro.py',
     ):
         script = pathlib.Path(_HOME.name) / path
         script.parent.mkdir(parents=True, exist_ok=True)
@@ -189,6 +190,30 @@ class AgentHookTemplatesTests(unittest.TestCase):
 
     def test_hub_empty_file_passes_through(self):
         self.assertEqual(render(CLAUDE[1], ''), '')
+
+    def test_slow_turn_retro_stop_hook_registered_across_claude_and_codex(self):
+        for rel in CLAUDE:
+            with self.subTest(template=rel):
+                doc = json.loads(render(rel, '{}'))
+                groups = [
+                    g for g in doc['hooks']['Stop']
+                    if any('tools/slow_turn_retro.py' in h.get('command', '') for h in g['hooks'])
+                ]
+                self.assertEqual(len(groups), 1)
+                self.assertEqual(groups[0]['matcher'], '')
+                self.assertEqual(groups[0]['hooks'][0]['timeout'], 15)
+                self.assertTrue(groups[0]['hooks'][0]['command'].endswith('hook claude'))
+        for rel in CODEX:
+            with self.subTest(template=rel):
+                doc = json.loads(render(rel, '{}'))
+                groups = [
+                    g for g in doc['hooks']['Stop']
+                    if any('tools/slow_turn_retro.py' in h.get('command', '') for h in g['hooks'])
+                ]
+                self.assertEqual(len(groups), 1)
+                self.assertEqual(groups[0]['matcher'], '')
+                self.assertEqual(groups[0]['hooks'][0]['timeout'], 15)
+                self.assertTrue(groups[0]['hooks'][0]['command'].endswith('hook codex'))
 
 
 if __name__ == '__main__':
