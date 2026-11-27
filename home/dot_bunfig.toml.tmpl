@@ -1,0 +1,7 @@
+{{- if eq .chezmoi.hostname "DESKTOP-O91444G" -}}
+[install.cache]
+dir = "C:/Users/gwmai/git/.stores/bun"
+{{ else if eq .chezmoi.os "darwin" -}}
+[install.cache]
+dir = "/Users/royalaid/git/.bun-cache"
+{{ end -}}
