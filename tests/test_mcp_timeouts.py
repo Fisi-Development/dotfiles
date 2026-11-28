@@ -1,16 +1,13 @@
-"""Regression checks for MCP timeout configuration and a bounded stdio call."""
+"""Regression checks for MCP timeout configuration readback and apply safety."""
 
 from contextlib import redirect_stdout
 import importlib.util
 import io
 import json
 from pathlib import Path
-from queue import Empty, Queue
 import subprocess
 import sys
 import tempfile
-from threading import Event, Thread
-import time
 import tomllib
 import unittest
 from unittest.mock import patch
@@ -18,38 +15,6 @@ from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'home/dot_agents/bin/mcp_timeouts.py'
 SERVER = 'chrome-devtools'
-MCP_SERVER = """
-import json
-import sys
-from threading import Event
-
-for line in sys.stdin:
-    message = json.loads(line)
-    method = message['method']
-    if method == 'initialize':
-        result = {
-            'protocolVersion': message['params']['protocolVersion'],
-            'capabilities': {'tools': {}},
-            'serverInfo': {'name': 'test-server', 'version': '1'},
-        }
-    elif method == 'notifications/initialized':
-        continue
-    elif method == 'tools/call':
-        if message['params']['name'] == 'hang':
-            print(json.dumps({
-                'jsonrpc': '2.0',
-                'method': 'notifications/progress',
-                'params': {
-                    'progressToken': message['params']['_meta']['progressToken'],
-                    'progress': 0,
-                },
-            }), flush=True)
-            Event().wait()
-        result = {'content': [{'type': 'text', 'text': 'done'}]}
-    else:
-        raise ValueError(method)
-    print(json.dumps({'jsonrpc': '2.0', 'id': message['id'], 'result': result}), flush=True)
-"""
 
 
 class MCPTimeoutTests(unittest.TestCase):
@@ -143,72 +108,33 @@ class MCPTimeoutTests(unittest.TestCase):
                 finally:
                     path.write_bytes(original)
 
-    def test_stdio_caller_aborts_hanging_tool_at_configured_timeout(self):
+    def test_fractional_timeout_and_codex_work_config(self):
+        codex_work = self.home / '.codex-work' / 'config.toml'
+        codex_work.parent.mkdir(parents=True, exist_ok=True)
+        codex_work.write_text(f'[mcp_servers.{SERVER}]\ncommand = "npx"\n', encoding='utf-8')
         with patch.dict(self.script.TIMEOUTS, {SERVER: 0.5}):
             self.assertEqual(self.run_script()[0], 0)
-        config = tomllib.loads(self.codex_config.read_text(encoding='utf-8'))
-        timeout = config['mcp_servers'][SERVER]['tool_timeout_sec']
-        self.assertEqual(timeout, 0.5)
+            status, lines = self.run_script('--check')
+        self.assertEqual(status, 0)
+        for path in (self.codex_config, codex_work):
+            config = tomllib.loads(path.read_text(encoding='utf-8'))
+            self.assertEqual(config['mcp_servers'][SERVER]['tool_timeout_sec'], 0.5)
+        self.assertIn('ok  .codex-work chrome-devtools: 0.5 (want 0.5)', lines)
 
-        with subprocess.Popen(
-            [sys.executable, '-I', '-u', '-c', MCP_SERVER],
-            cwd=self.home,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            text=True,
-            encoding='utf-8',
-        ) as process:
-            messages = Queue()
-            hanging_handler_started = Event()
+    def test_user_server_with_env_block_is_not_removed(self):
+        calls = []
 
-            def read_messages():
-                for line in process.stdout:
-                    message = json.loads(line)
-                    if message.get('method') == 'notifications/progress':
-                        hanging_handler_started.set()
-                    else:
-                        messages.put(message)
+        def fake_run(args):
+            calls.append(args)
+            if args[1:3] == ['mcp', 'get']:
+                return subprocess.CompletedProcess(
+                    args, 0,
+                    stdout='Scope: User config\n  Type: stdio\n  Command: npx\n  Args: -y server\n  Environment:\n    API_KEY=secret\n',
+                    stderr='',
+                )
+            return subprocess.CompletedProcess(args, 0, stdout='', stderr='')
 
-            def send(method, params=None, request_id=None):
-                message = {'jsonrpc': '2.0', 'method': method}
-                if params is not None:
-                    message['params'] = params
-                if request_id is not None:
-                    message['id'] = request_id
-                process.stdin.write(json.dumps(message) + '\n')
-                process.stdin.flush()
-
-            reader = Thread(target=read_messages)
-            reader.start()
-            try:
-                send('initialize', {
-                    'protocolVersion': '2024-11-05',
-                    'capabilities': {},
-                    'clientInfo': {'name': 'timeout-test', 'version': '1'},
-                }, request_id=1)
-                self.assertEqual(messages.get(timeout=5)['id'], 1)
-                send('notifications/initialized')
-
-                send('tools/call', {'name': 'fast'}, request_id=2)
-                self.assertEqual(messages.get(timeout=timeout), {
-                    'jsonrpc': '2.0', 'id': 2,
-                    'result': {'content': [{'type': 'text', 'text': 'done'}]},
-                })
-
-                started = time.monotonic()
-                send('tools/call', {
-                    'name': 'hang', '_meta': {'progressToken': 'hang'},
-                }, request_id=3)
-                with self.assertRaises(Empty):
-                    messages.get(timeout=max(0, timeout - (time.monotonic() - started)))
-                elapsed = time.monotonic() - started
-                self.assertTrue(hanging_handler_started.is_set(), 'server did not enter the hanging tool')
-                self.assertIsNone(process.poll(), 'server exited before the timeout')
-                self.assertGreaterEqual(elapsed, timeout)
-                self.assertLess(elapsed, timeout + 1)
-            finally:
-                if process.poll() is None:
-                    process.kill()
-                process.wait(timeout=5)
-                reader.join(timeout=5)
-            self.assertFalse(reader.is_alive())
+        with patch.object(self.script, 'claude_exe', return_value='claude'), \
+                patch.object(self.script, 'run', side_effect=fake_run):
+            self.script.claude_user_servers(check=False)
+        self.assertFalse(any(cmd[1:3] == ['mcp', 'remove'] for cmd in calls))
